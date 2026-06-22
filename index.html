@@ -249,7 +249,7 @@ const TABS = [
   { label: 'RP Leaderboard',       sheet: 'RP Leaderboard',       type: 'statboard' },
   { label: 'Past Month Board',     sheet: 'Past Month Board',     type: 'statboard' },
   { label: 'SV+HLD Trends',        sheet: 'SV+HLD Trends',        type: 'statboard' },
-  { label: 'Combined Ranks',       sheet: 'Past 30 Trends',       type: 'statboard' },
+  { label: 'Combined Ranks',       sheet: 'Combined Ranks',       type: 'statboard' },
   { label: 'Bullpen Depth Charts', sheet: 'Bullpen Depth Charts', type: 'depth'     },
   { label: 'Save Only',            sheet: 'Save Only Ranks',      type: 'ranklist'  },
   { label: "SV+HLD's",             sheet: 'SV+HLD Ranks',         type: 'ranklist'  },
@@ -401,17 +401,17 @@ function renderStatboard(rows, tabIdx) {
     metaNote = metaNote.replace(/Window:[^|]*/i, 'Window: Past 30 Days  ');
   }
 
-  /* SV+HLD Trends and Past 30 Trends: split the meta legend onto a second
-     line for readability (and Past 30 Trends drops its sort-order note). */
-  if (sheetName === 'SV+HLD Trends' || sheetName === 'Past 30 Trends') {
-    if (sheetName === 'Past 30 Trends') {
+  /* SV+HLD Trends and Combined Ranks: split the meta legend onto a second
+     line for readability (and Combined Ranks drops its sort-order note). */
+  if (sheetName === 'SV+HLD Trends' || sheetName === 'Combined Ranks') {
+    if (sheetName === 'Combined Ranks') {
       metaNote = metaNote.replace(/your manual ranking/i, 'my manual ranking');
     }
     let parts = metaNote.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
-    if (sheetName === 'Past 30 Trends') {
+    if (sheetName === 'Combined Ranks') {
       parts = parts.filter(p => !/^Sorted by Combined Rank/i.test(p));
     }
-    const breakRe = sheetName === 'Past 30 Trends' ? /^SV\+HLD Rank/i : /^Usage\s*=/i;
+    const breakRe = sheetName === 'Combined Ranks' ? /^SV\+HLD Rank/i : /^Usage\s*=/i;
     const idx = parts.findIndex(p => breakRe.test(p));
     if (idx > 0) {
       $meta.innerHTML = esc(parts.slice(0, idx).join(' · ')) + '<br>' +
