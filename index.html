@@ -393,17 +393,35 @@ function renderStatboard(rows, tabIdx) {
   h += '</tbody></table></div></div>';
   h += footNotes(notes.filter(n => !/^Last updated/i.test(n)));
   let metaNote = notes.find(n => /^Last updated/i.test(n)) || '';
-  /* Past Month Board uses a 50-pitch PLV minimum (sheet footer says 100) and
-     shows a friendlier rolling-window label instead of literal dates. */
-  if (TABS[tabIdx] && TABS[tabIdx].sheet === 'Past Month Board') {
+  const sheetName = TABS[tabIdx] && TABS[tabIdx].sheet;
+
+  /* Past Month Board: 50-pitch PLV minimum + friendlier rolling-window label. */
+  if (sheetName === 'Past Month Board') {
     metaNote = metaNote.replace(/min 100 pitches/i, 'min 50 pitches');
     metaNote = metaNote.replace(/Window:[^|]*/i, 'Window: Past 30 Days  ');
   }
-  /* SV+HLD Trends — drop the "(desc)" qualifier from the sort note */
-  if (TABS[tabIdx] && TABS[tabIdx].sheet === 'SV+HLD Trends') {
-    metaNote = metaNote.replace(/\s*\(desc\)/i, '');
+
+  /* SV+HLD Trends and Past 30 Trends: split the meta legend onto a second
+     line for readability (and Past 30 Trends drops its sort-order note). */
+  if (sheetName === 'SV+HLD Trends' || sheetName === 'Past 30 Trends') {
+    if (sheetName === 'Past 30 Trends') {
+      metaNote = metaNote.replace(/your manual ranking/i, 'my manual ranking');
+    }
+    let parts = metaNote.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
+    if (sheetName === 'Past 30 Trends') {
+      parts = parts.filter(p => !/^Sorted by Combined Rank/i.test(p));
+    }
+    const breakRe = sheetName === 'Past 30 Trends' ? /^SV\+HLD Rank/i : /^Usage\s*=/i;
+    const idx = parts.findIndex(p => breakRe.test(p));
+    if (idx > 0) {
+      $meta.innerHTML = esc(parts.slice(0, idx).join(' · ')) + '<br>' +
+                        esc(parts.slice(idx).join(' · '));
+    } else {
+      setMeta(metaNote);
+    }
+  } else {
+    setMeta(metaNote);
   }
-  setMeta(metaNote);
   return h;
 }
 
