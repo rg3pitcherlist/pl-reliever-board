@@ -569,7 +569,10 @@ function renderTrends(rows, tabIdx) {
     h += '</tr>';
   }
   h += '</tbody></table></div></div>';
-  h += footNotes(['Δ columns: ▲ = rose in the ranks, ▼ = fell. Blank seasonal columns have not been ranked yet.']);
+  h += footNotes([
+    'Rank publish dates: Fall Rank = 10/17/25 | Winter Rank = 2/10/26 | Spring Rank = 3/26/26 | Summer Rank = 6/30/26 | Final Y! Rank = 9/28/26',
+    'Δ columns: ▲ = rose in the ranks, ▼ = fell. Blank seasonal columns have not been ranked yet.'
+  ]);
   setMeta('');
   return h;
 }
