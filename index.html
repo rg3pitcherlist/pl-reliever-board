@@ -269,9 +269,10 @@ tr.clickable:hover { background: rgba(85,232,255,0.07) !important; }
 .tx-src a { color: var(--cyan); text-decoration: none; }
 .tx-list { border: 1px solid var(--border-table); border-radius: 10px; overflow: hidden; }
 .tx-item {
-  padding: 11px 16px; font: 400 14px/1.45 'Work Sans', sans-serif; color: var(--text-cell);
+  padding: 12px 16px; font: 400 15.5px/1.5 'Work Sans', sans-serif; color: var(--text-cell);
   border-bottom: 1px solid var(--border-row);
 }
+.tx-item strong { font-weight: 700; color: var(--text-player); }
 .tx-item:nth-child(odd)  { background: var(--row-a); }
 .tx-item:nth-child(even) { background: var(--row-b); }
 .tx-item:last-child { border-bottom: none; }
@@ -521,6 +522,9 @@ function renderStatboard(rows, tabIdx) {
     let parts = metaNote.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
     if (sheetName === 'Combined Ranks') {
       parts = parts.filter(p => !/^Sorted by Combined Rank/i.test(p));
+      const svIdx = parts.findIndex(p => /^SV\+HLD Rank/i.test(p));
+      if (svIdx !== -1) parts.splice(svIdx + 1, 0,
+        'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Rank)');
     }
     const breakRe = sheetName === 'Combined Ranks' ? /^SV\+HLD Rank/i : /^Usage\s*=/i;
     const idx = parts.findIndex(p => breakRe.test(p));
@@ -665,6 +669,7 @@ function renderRankTrends(tab, tabIdx, built) {
     'Rank publish dates: ' + dateBits.join('  |  '),
     'Δ columns: ▲ = rose in the ranks, ▼ = fell  |  IL = dropped out while on the injured list  |  SP = moved to the rotation  |  blank = not ranked that period',
     'IL badge = currently on the injured list  |  Click any player for rank, ERA, WHIP and K% trend graphs',
+    'If you’re looking for the detailed list or ranking of Relievers, check out my weekly RP Ranks: https://pitcherlist.com/category/fantasy/relief-pitchers/reliever-ranks/',
   ]);
   setMeta(built.stamp || '');
   return h;
@@ -873,14 +878,35 @@ async function loadTransactions() {
       if (!heading && /^Transactions\b/i.test(t) && t.length < 80 && !el.querySelector('li')) heading = el;
     });
     if (!heading) return;
-    const items = [];
+    // Render each transaction with the PLAYER name in bold. In the articles
+    // player names are links to /player/ pages; if none are marked that way,
+    // fall back to bolding every link after the first (the first is the team).
+    const liHtml = li => {
+      const anchors = Array.prototype.slice.call(li.querySelectorAll('a'));
+      const playerAs = anchors.filter(a => /\/player\//.test(a.getAttribute('href') || ''));
+      const boldSet = new Set(playerAs.length ? playerAs : anchors.slice(1));
+      let out = '';
+      (function walk(node) {
+        node.childNodes.forEach(n => {
+          if (n.nodeType === 3) out += esc(n.textContent);
+          else if (n.nodeType === 1) {
+            if (n.tagName === 'A') {
+              const t = esc(n.textContent);
+              out += boldSet.has(n) ? '<strong>' + t + '</strong>' : t;
+            } else walk(n);
+          }
+        });
+      })(li);
+      return out.trim();
+    };
+    const items = [];   // pre-escaped HTML strings
     let node = heading.nextElementSibling ||
       (heading.parentElement && heading.parentElement !== div ? heading.parentElement.nextElementSibling : null);
     while (node) {
       if (/^H[1-6]$/.test(node.tagName)) break;
       const lis = node.querySelectorAll('li');
       if (lis.length) {
-        lis.forEach(li => items.push(li.textContent.trim()));
+        lis.forEach(li => items.push(liHtml(li)));
       } else if (items.length && (node.textContent || '').trim() !== '') {
         break;   // list done — next section is starting
       }
@@ -900,7 +926,7 @@ async function loadTransactions() {
 }
 
 function renderTransactions(tx) {
-  setMeta('Pulled live from the Reliever Streamers series — one section per day, newest first');
+  setMeta('Pulled from the Reliever Streamers series');
   let h = '<div class="tx-wrap">';
   if (tx.sections.length) {
     tx.sections.forEach(s => {
@@ -908,7 +934,7 @@ function renderTransactions(tx) {
         '<div class="tx-src">From <a href="' + esc(s.link) + '" target="_blank" rel="noopener">' +
         esc(s.title) + '</a></div>' +
         '<div class="tx-list" style="margin-bottom:26px">' +
-        s.items.map(i => '<div class="tx-item">' + esc(i) + '</div>').join('') + '</div>';
+        s.items.map(i => '<div class="tx-item">' + i + '</div>').join('') + '</div>';
     });
   } else {
     h += '<div class="state-msg">No transactions found in the recent articles.</div>';
@@ -1071,6 +1097,30 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* Combined Ranks: splice in a display-only "Save Only Rank" column (from the
+   "Save Only Ranks" tab, matched by name) right after "SV+HLD Rank". Works on
+   a COPY of the cached rows so re-renders stay idempotent. It's informational
+   only — the Combined Rank formula on the sheet is untouched. */
+function addSaveOnlyColumn(rows, rankRows) {
+  const cur = {};
+  (rankRows || []).slice(1).forEach(r => {
+    const nm = (r[1] || '').trim();
+    const rk = numVal(r[0]);
+    if (nm && !isNaN(rk)) cur[normName(nm)] = String(rk);
+  });
+  const header = rows[0];
+  let at = header.findIndex(h => /^SV\+HLD Rank$/i.test(String(h).trim()));
+  at = at === -1 ? header.length : at + 1;
+  return rows.map((r, i) => {
+    const c = r.slice();
+    while (c.length < header.length) c.push('');
+    if (i === 0) c.splice(at, 0, 'Save Only Rank');
+    else if (isNoteRow(r)) c.splice(at, 0, '');
+    else c.splice(at, 0, cur[normName(r[0] || '')] || '');
+    return c;
+  });
+}
+
 function tabReady(tab) {
   const have = (s, id) => ((id || SHEET_ID) + '::' + (s || '')) in cache;
   if (tab.type === 'transactions') return !!txCache;
@@ -1104,12 +1154,19 @@ async function show(i) {
       if (i !== active) return;
       html = renderILTab(il);
     } else {
-      const rows = await loadSheet(tab.sheet);
+      let rows = await loadSheet(tab.sheet);
       if (i !== active) return;          // user moved on
       if (!rows || rows.length < 2) {
         $content.innerHTML = '<div class="state-msg">No data available right now — the board keeps its shape.</div>';
         setMeta('');
         return;
+      }
+      if (tab.sheet === 'Combined Ranks') {
+        try {
+          const rk = await loadSheet('Save Only Ranks');
+          if (i !== active) return;
+          rows = addSaveOnlyColumn(rows, rk);
+        } catch (e) { /* column simply omitted if the ranks tab fails */ }
       }
       html = tab.type === 'depth' ? renderDepth(rows) : renderStatboard(rows, i);
     }
