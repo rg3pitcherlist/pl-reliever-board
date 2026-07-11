@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pitcher List's RP Leaderboard, Depth Charts and Rankings</title>
+<title>Pitcher List's Reliever Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -299,7 +299,7 @@ td.wrap { white-space: normal; line-height: 1.5; }
 </head>
 <body>
 <div class="league-header">
-  <div class="league-title">Pitcher List's RP Leaderboard, Depth Charts and Rankings</div>
+  <div class="league-title">Pitcher List's Reliever Dashboard</div>
   <div class="league-meta" id="meta">Loading&hellip;</div>
   <div class="tabs" id="tabs"></div>
 </div>
@@ -321,13 +321,13 @@ const TABS = [
   { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true },
   { label: 'Combined Ranks',        sheet: 'Combined Ranks',       type: 'statboard', plPages: true },
   { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
-  { label: 'Closer Rank Trends',    sheet: 'Closer Rank Trends',   type: 'ranktrends',
+  { label: 'Closer Ranks',          sheet: 'Closer Rank Trends',   type: 'ranktrends',
     ranksSheet: 'Save Only Ranks',  statHeader: 'SV',         statLabel: 'SV',
     finalHeader: 'Final Y! Rank',   graph: 'closer' },
-  { label: 'SV+HLD Rank Trends',    sheet: 'SV+HLD Rank Trends',   type: 'ranktrends',
+  { label: 'SV+HLD Ranks',          sheet: 'SV+HLD Rank Trends',   type: 'ranktrends',
     ranksSheet: 'SV+HLD Ranks',     statHeader: 'Save+Holds', statLabel: 'SV+HLD',
     finalHeader: 'Final Fantrax Rank', graph: 'svhld' },
-  { label: 'Reliever Transactions', sheet: null, type: 'transactions' },
+  { label: 'Transactions',          sheet: null, type: 'transactions' },
   { label: 'Injured List',          sheet: null, type: 'il' },
 ];
 
@@ -949,7 +949,7 @@ function renderTransactions(tx) {
 function renderILTab(il) {
   setMeta(il.stamp || ('Data as of ' + new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })));
   let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>' +
-    '<th style="width:210px">Player</th><th>Notes</th><th style="width:150px">Est. Return</th>' +
+    '<th style="width:210px">Player</th><th>Notes</th><th style="width:220px">Est. Return</th>' +
     '</tr></thead><tbody>';
   for (const r of il.rows) {
     h += '<tr><td class="player-cell"><div class="player-name pl-name-link" data-plname="' + esc(r[0]) +
