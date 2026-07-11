@@ -524,7 +524,8 @@ function renderStatboard(rows, tabIdx) {
       parts = parts.filter(p => !/^Sorted by Combined Rank/i.test(p));
       const svIdx = parts.findIndex(p => /^SV\+HLD Rank/i.test(p));
       if (svIdx !== -1) parts.splice(svIdx + 1, 0,
-        'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Rank)');
+        'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Rank)',
+        'SV+HLD’s = total Saves + Holds this season (official MLB stats, not included in Combined Rank)');
     }
     const breakRe = sheetName === 'Combined Ranks' ? /^SV\+HLD Rank/i : /^Usage\s*=/i;
     const idx = parts.findIndex(p => breakRe.test(p));
@@ -1097,28 +1098,51 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* Combined Ranks: splice in a display-only "Save Only Rank" column (from the
-   "Save Only Ranks" tab, matched by name) right after "SV+HLD Rank". Works on
-   a COPY of the cached rows so re-renders stay idempotent. It's informational
-   only — the Combined Rank formula on the sheet is untouched. */
-function addSaveOnlyColumn(rows, rankRows) {
+/* Season Saves+Holds totals for every pitcher, from MLB's official season
+   stats (playerPool=All). Cached per page load. */
+const svhldTotalsCache = { map: null };
+async function loadSvHldTotals() {
+  if (svhldTotalsCache.map) return svhldTotalsCache.map;
+  const r = await fetch('https://statsapi.mlb.com/api/v1/stats?stats=season&group=pitching&season=2026' +
+    '&sportIds=1&playerPool=All&limit=3000&fields=stats,splits,player,fullName,stat,saves,holds');
+  const j = await r.json();
+  const map = {};
+  ((((j.stats || [])[0]) || {}).splits || []).forEach(s => {
+    const nm = s.player && s.player.fullName;
+    if (!nm) return;
+    map[normName(nm)] = ((+(s.stat && s.stat.saves) || 0) + (+(s.stat && s.stat.holds) || 0));
+  });
+  svhldTotalsCache.map = map;
+  return map;
+}
+
+/* Combined Ranks: rebuild the display columns in this order —
+   Save Only Rank · SV+HLD Rank · SV+HLD's (season Saves+Holds, MLB) ·
+   Usage Rank · Past 30 Rank · Overall Rank · Combined Rank.
+   Save Only Rank comes live from the "Save Only Ranks" tab. All of it is
+   display-only — the sheet and its Combined Rank formula are untouched. */
+function buildCombinedRows(rows, rankRows, svhldTotals) {
   const cur = {};
   (rankRows || []).slice(1).forEach(r => {
     const nm = (r[1] || '').trim();
     const rk = numVal(r[0]);
     if (nm && !isNaN(rk)) cur[normName(nm)] = String(rk);
   });
-  const header = rows[0];
-  let at = header.findIndex(h => /^SV\+HLD Rank$/i.test(String(h).trim()));
-  at = at === -1 ? header.length : at + 1;
-  return rows.map((r, i) => {
-    const c = r.slice();
-    while (c.length < header.length) c.push('');
-    if (i === 0) c.splice(at, 0, 'Save Only Rank');
-    else if (isNoteRow(r)) c.splice(at, 0, '');
-    else c.splice(at, 0, cur[normName(r[0] || '')] || '');
-    return c;
+  const H = rows[0].map(h => String(h).trim());
+  const ix = n => H.findIndex(h => h.toUpperCase() === n.toUpperCase());
+  const iUsage = ix('Usage Rank'), iP30 = ix('Past 30 Rank'), iOv = ix('Overall Rank'),
+        iSVR = ix('SV+HLD Rank'), iComb = ix('Combined Rank'), iSP = ix('SP');
+  const out = [['Name', 'Team', 'Save Only Rank', 'SV+HLD Rank', 'SV+HLD’s',
+                'Usage Rank', 'Past 30 Rank', 'Overall Rank', 'Combined Rank', 'SP']];
+  rows.slice(1).forEach(r => {
+    if (isNoteRow(r) || (r[0] || '').trim() === '') { out.push(r); return; }
+    const nm = (r[0] || '').trim();
+    const key = normName(nm);
+    const tot = (svhldTotals && svhldTotals.hasOwnProperty(key)) ? String(svhldTotals[key]) : '';
+    const g = i => (i === -1 || r[i] == null) ? '' : r[i];
+    out.push([nm, g(1), cur[key] || '', g(iSVR), tot, g(iUsage), g(iP30), g(iOv), g(iComb), g(iSP)]);
   });
+  return out;
 }
 
 function tabReady(tab) {
@@ -1163,10 +1187,13 @@ async function show(i) {
       }
       if (tab.sheet === 'Combined Ranks') {
         try {
-          const rk = await loadSheet('Save Only Ranks');
+          const pair = await Promise.all([
+            loadSheet('Save Only Ranks'),
+            loadSvHldTotals().catch(() => null),
+          ]);
           if (i !== active) return;
-          rows = addSaveOnlyColumn(rows, rk);
-        } catch (e) { /* column simply omitted if the ranks tab fails */ }
+          rows = buildCombinedRows(rows, pair[0], pair[1]);
+        } catch (e) { /* columns simply omitted if the extras fail */ }
       }
       html = tab.type === 'depth' ? renderDepth(rows) : renderStatboard(rows, i);
     }
