@@ -213,6 +213,10 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .card.committee { border-top: 2px solid rgba(167,139,250,0.55); }
 .card.interim   { border-top: 2px solid rgba(245,185,80,0.55); }
 
+/* ── Player-page links (RP Leaderboard / Past Month Board) ── */
+.pl-name-link { cursor: pointer; }
+.pl-name-link:hover { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px; }
+
 /* ── IL badge (from the Injured List sheet) ────────────── */
 .il-badge {
   display: inline-block; margin-left: 8px; vertical-align: middle;
@@ -311,8 +315,8 @@ const STREAMER_CAT_URL = 'https://pitcherlist.com/category/fantasy/relief-pitche
 const STREAMER_API     = 'https://pitcherlist.com/wp-json/wp/v2/posts?categories=1369&per_page=10&_fields=title,link,date,content';
 
 const TABS = [
-  { label: 'RP Leaderboard',        sheet: 'RP Leaderboard',       type: 'statboard' },
-  { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard' },
+  { label: 'RP Leaderboard',        sheet: 'RP Leaderboard',       type: 'statboard', plPages: true },
+  { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard', plPages: true },
   { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard' },
   { label: 'Combined Ranks',        sheet: 'Combined Ranks',       type: 'statboard' },
   { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
@@ -424,10 +428,12 @@ function cellHtml(raw) {
   if (!isNaN(n) && n === 0) return '<span class="zero">' + esc(v) + '</span>';
   return esc(v);
 }
-function playerCell(name, team, flagged, onIL) {
+function playerCell(name, team, flagged, onIL, plLink) {
   const badge = flagged ? '<span class="sp-badge" title="Flagged as a true starter / bulk usage">SP</span>' : '';
   const il = onIL ? '<span class="il-badge" title="Currently on the injured list">IL</span>' : '';
-  return '<td class="player-cell"><div class="player-name">' + esc(name) + badge + il +
+  const linkCls  = plLink ? ' pl-name-link' : '';
+  const linkAttr = plLink ? ' data-plname="' + esc(name) + '" title="Open Pitcher List player page"' : '';
+  return '<td class="player-cell"><div class="player-name' + linkCls + '"' + linkAttr + '>' + esc(name) + badge + il +
          '</div><div class="player-team">' + esc(team || '') + '</div></td>';
 }
 /* Accent/punctuation-insensitive name key: "Andrés Muñoz" → "andres munoz" */
@@ -488,9 +494,10 @@ function renderStatboard(rows, tabIdx) {
   h += sortableTh('Player', 'player', tabIdx, false);
   for (const i of cols) h += sortableTh(header[i], i, tabIdx, true);
   h += '</tr></thead><tbody>';
+  const plLink = !!(TABS[tabIdx] && TABS[tabIdx].plPages);
   for (const r of data) {
     const fl = isFlagged(r);
-    h += '<tr class="data-row' + (fl ? ' sp-flagged' : '') + '">' + playerCell(r[0], r[1], fl);
+    h += '<tr class="data-row' + (fl ? ' sp-flagged' : '') + '">' + playerCell(r[0], r[1], fl, false, plLink);
     for (const i of cols) h += '<td class="num">' + cellHtml(r[i]) + '</td>';
     h += '</tr>';
   }
@@ -808,6 +815,32 @@ function openPlayerModal(tabIdx, key) {
   });
 }
 
+/* ── Pitcher List player-page links ────────────────────── */
+const plPageCache = {};
+
+async function resolvePlayerPage(name) {
+  const key = normName(name);
+  if (plPageCache[key]) return plPageCache[key];
+  const res = await fetch('https://pitcherlist.com/wp-json/wp/v2/search?search=' +
+    encodeURIComponent(name) + '&subtype=player&per_page=5&_fields=url,title')
+    .then(r => r.json()).catch(() => []);
+  const players = Array.isArray(res) ? res : [];
+  // Prefer an exact (accent-insensitive) title match; fall back to the first
+  // result, then to the site search page so the click always lands somewhere.
+  const exact = players.filter(x => normName(decodeEntities(x.title)) === key);
+  const pick = (exact[0] || players[0]);
+  const url = pick ? pick.url : 'https://pitcherlist.com/?s=' + encodeURIComponent(name);
+  plPageCache[key] = url;
+  return url;
+}
+
+function openPlayerPage(name) {
+  const w = window.open('', '_blank');          // open synchronously (popup-blocker safe)
+  resolvePlayerPage(name).then(url => {
+    if (w) w.location = url; else window.open(url, '_blank');
+  }).catch(() => { if (w) w.close(); });
+}
+
 /* ── Reliever Transactions (latest Reliever Streamers article) ── */
 let txCache = null;
 
@@ -1011,6 +1044,8 @@ $content.addEventListener('click', e => {
     show(active);
     return;
   }
+  const nm = e.target.closest('.pl-name-link');
+  if (nm) { openPlayerPage(nm.dataset.plname); return; }
   const tr = e.target.closest('tr.clickable');
   if (tr && TABS[active] && TABS[active].type === 'ranktrends') {
     openPlayerModal(active, tr.dataset.key);
