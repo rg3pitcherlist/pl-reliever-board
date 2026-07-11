@@ -823,18 +823,27 @@ async function loadTransactions() {
   if (!p) throw new Error('no post');
   const div = document.createElement('div');
   div.innerHTML = p.content.rendered;
+  // The "Transactions (…)" header is sometimes a real heading, sometimes a
+  // styled <p>/<strong>. Match any short element whose text starts with
+  // "Transactions" and that doesn't itself contain the list.
   let heading = null;
-  div.querySelectorAll('h1,h2,h3,h4,h5').forEach(el => {
-    if (!heading && /^\s*Transactions/i.test(el.textContent)) heading = el;
+  div.querySelectorAll('h1,h2,h3,h4,h5,h6,p,strong,b,div').forEach(el => {
+    const t = (el.textContent || '').trim();
+    if (!heading && /^Transactions\b/i.test(t) && t.length < 80 && !el.querySelector('li')) heading = el;
   });
   const items = [];
   let headText = 'Transactions';
   if (heading) {
     headText = heading.textContent.trim();
-    let node = heading.nextElementSibling;
-    while (node && !/^H[1-5]$/.test(node.tagName)) {
-      if (node.tagName === 'UL' || node.tagName === 'OL') {
-        node.querySelectorAll('li').forEach(li => items.push(li.textContent.trim()));
+    let node = heading.nextElementSibling ||
+      (heading.parentElement && heading.parentElement !== div ? heading.parentElement.nextElementSibling : null);
+    while (node) {
+      if (/^H[1-6]$/.test(node.tagName)) break;
+      const lis = node.querySelectorAll('li');
+      if (lis.length) {
+        lis.forEach(li => items.push(li.textContent.trim()));
+      } else if (items.length && (node.textContent || '').trim() !== '') {
+        break;   // list done — next section is starting
       }
       node = node.nextElementSibling;
     }
