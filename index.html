@@ -317,8 +317,8 @@ const STREAMER_API     = 'https://pitcherlist.com/wp-json/wp/v2/posts?categories
 const TABS = [
   { label: 'RP Leaderboard',        sheet: 'RP Leaderboard',       type: 'statboard', plPages: true },
   { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard', plPages: true },
-  { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard' },
-  { label: 'Combined Ranks',        sheet: 'Combined Ranks',       type: 'statboard' },
+  { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true },
+  { label: 'Combined Ranks',        sheet: 'Combined Ranks',       type: 'statboard', plPages: true },
   { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
   { label: 'Closer Rank Trends',    sheet: 'Closer Rank Trends',   type: 'ranktrends',
     ranksSheet: 'Save Only Ranks',  statHeader: 'SV',         statLabel: 'SV',
@@ -920,7 +920,8 @@ function renderILTab(il) {
     '<th style="width:190px">Player</th><th>Notes</th><th style="width:130px">Est. Return</th>' +
     '</tr></thead><tbody>';
   for (const r of il.rows) {
-    h += '<tr><td class="player-cell"><div class="player-name">' + esc(r[0]) +
+    h += '<tr><td class="player-cell"><div class="player-name pl-name-link" data-plname="' + esc(r[0]) +
+      '" title="Open Pitcher List player page">' + esc(r[0]) +
       '<span class="il-badge">IL</span></div></td>' +
       '<td class="wrap">' + esc(r[1]) + '</td>' +
       '<td>' + cellHtml(r[2]) + '</td></tr>';
@@ -990,7 +991,7 @@ function renderDepth(rows) {
           if (!name) continue;
           const rc = role === 'CL' ? 'cl' : role === 'CO' ? 'co' : role === 'SU' ? 'su' : '';
           h += '<div class="bp-row"><span class="bp-role ' + rc + '">' + esc(role) + '</span>' +
-               '<span class="bp-name">' + esc(name) + '</span>' +
+               '<span class="bp-name pl-name-link" data-plname="' + esc(name) + '" title="Open Pitcher List player page">' + esc(name) + '</span>' +
                '<span class="bp-hand' + (hand === 'L' ? ' lefty' : '') + '">' + esc(hand) + 'HP</span></div>';
         }
         h += '</div>';
