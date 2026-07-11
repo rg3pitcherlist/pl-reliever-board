@@ -263,7 +263,7 @@ tr.clickable:hover { background: rgba(85,232,255,0.07) !important; }
 .chart-note { font: 400 11px 'Work Sans', sans-serif; color: var(--text-zero); margin-top: 6px; }
 
 /* ── Reliever Transactions ─────────────────────────────── */
-.tx-wrap { max-width: 900px; }
+.tx-wrap { width: 100%; }
 .tx-head { font: 700 22px 'DM Sans', sans-serif; color: var(--text-player); margin-bottom: 4px; }
 .tx-src  { font: 400 13px 'Work Sans', sans-serif; color: var(--text-zero); margin-bottom: 16px; }
 .tx-src a { color: var(--cyan); text-decoration: none; }
@@ -278,7 +278,7 @@ tr.clickable:hover { background: rgba(85,232,255,0.07) !important; }
 .tx-item:last-child { border-bottom: none; }
 
 /* ── Injured List tab ──────────────────────────────────── */
-td.wrap { white-space: normal; line-height: 1.5; max-width: 640px; }
+td.wrap { white-space: normal; line-height: 1.5; }
 
 /* ── States ────────────────────────────────────────────── */
 .spinner {
@@ -947,8 +947,8 @@ function renderTransactions(tx) {
 /* ── Injured List tab ──────────────────────────────────── */
 function renderILTab(il) {
   setMeta(il.stamp || ('Data as of ' + new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })));
-  let h = '<div class="table-wrap" style="max-width:1020px"><div class="table-scroll"><table><thead><tr>' +
-    '<th style="width:190px">Player</th><th>Notes</th><th style="width:130px">Est. Return</th>' +
+  let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>' +
+    '<th style="width:210px">Player</th><th>Notes</th><th style="width:150px">Est. Return</th>' +
     '</tr></thead><tbody>';
   for (const r of il.rows) {
     h += '<tr><td class="player-cell"><div class="player-name pl-name-link" data-plname="' + esc(r[0]) +
