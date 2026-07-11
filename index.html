@@ -308,7 +308,7 @@ td.wrap { white-space: normal; line-height: 1.5; max-width: 640px; }
 const SHEET_ID    = '1eCGn5vyJ5N3P-FemNUUB2yi_lDKNtB62_QTWTUXEiTA';
 const IL_SHEET_ID = '1cw3DE06uDcpVzADQn1eAg3wWuxhati_RPuh6rf0v4-Q';
 const STREAMER_CAT_URL = 'https://pitcherlist.com/category/fantasy/relief-pitchers/reliever-streamers/';
-const STREAMER_API     = 'https://pitcherlist.com/wp-json/wp/v2/posts?categories=1369&per_page=1&_fields=title,link,date,content';
+const STREAMER_API     = 'https://pitcherlist.com/wp-json/wp/v2/posts?categories=1369&per_page=10&_fields=title,link,date,content';
 
 const TABS = [
   { label: 'RP Leaderboard',        sheet: 'RP Leaderboard',       type: 'statboard' },
@@ -680,6 +680,7 @@ function lineChart(pts, opts) {
   if (y0 === y1) { y0 -= 1; y1 += 1; }
   const pad = (y1 - y0) * 0.1; y0 -= pad; y1 += pad;
   if (opts.floorZero && y0 < 0) y0 = 0;
+  if (opts.zeroBase) y0 = 0;          // fixed baseline (0.00 for ERA/WHIP, 0% for K%)
   const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
   const X = t => padL + (W - padL - padR) * (x1 === x0 ? 0.5 : (t - x0) / (x1 - x0));
   const Y = v => opts.invert
@@ -795,9 +796,9 @@ function openPlayerModal(tabIdx, key) {
       if (el) el.innerHTML = '<h4>' + esc(title) + '</h4>' + lineChart(pts, opts) +
         '<div class="chart-note">Cumulative through each appearance · MLB game logs</div>';
     };
-    put('chERA',  'ERA — season progression',  sr.era,  { fmt: v => v.toFixed(2), floorZero: true });
-    put('chWHIP', 'WHIP — season progression', sr.whip, { fmt: v => v.toFixed(2), floorZero: true });
-    put('chK',    'K% — season progression',   sr.kpct, { fmt: v => Math.round(v) + '%', floorZero: true });
+    put('chERA',  'ERA — season progression',  sr.era,  { fmt: v => v.toFixed(2), zeroBase: true });
+    put('chWHIP', 'WHIP — season progression', sr.whip, { fmt: v => v.toFixed(2), zeroBase: true });
+    put('chK',    'K% — season progression',   sr.kpct, { fmt: v => Math.round(v) + '%', zeroBase: true });
   }).catch(() => {
     ['chERA', 'chWHIP', 'chK'].forEach(id => {
       const el = document.getElementById(id);
@@ -819,22 +820,22 @@ function decodeEntities(html) {
 async function loadTransactions() {
   if (txCache) return txCache;
   const posts = await fetch(STREAMER_API).then(r => r.json());
-  const p = posts && posts[0];
-  if (!p) throw new Error('no post');
-  const div = document.createElement('div');
-  div.innerHTML = p.content.rendered;
-  // The "Transactions (…)" header is sometimes a real heading, sometimes a
-  // styled <p>/<strong>. Match any short element whose text starts with
-  // "Transactions" and that doesn't itself contain the list.
-  let heading = null;
-  div.querySelectorAll('h1,h2,h3,h4,h5,h6,p,strong,b,div').forEach(el => {
-    const t = (el.textContent || '').trim();
-    if (!heading && /^Transactions\b/i.test(t) && t.length < 80 && !el.querySelector('li')) heading = el;
-  });
-  const items = [];
-  let headText = 'Transactions';
-  if (heading) {
-    headText = heading.textContent.trim();
+  if (!posts || !posts.length) throw new Error('no posts');
+  // One section per daily article (newest first) — roughly the past 1–2 weeks.
+  const sections = [];
+  posts.forEach(p => {
+    const div = document.createElement('div');
+    div.innerHTML = p.content.rendered;
+    // The "Transactions (…)" header is sometimes a real heading, sometimes a
+    // styled <p>/<strong>. Match any short element whose text starts with
+    // "Transactions" and that doesn't itself contain the list.
+    let heading = null;
+    div.querySelectorAll('h1,h2,h3,h4,h5,h6,p,strong,b,div').forEach(el => {
+      const t = (el.textContent || '').trim();
+      if (!heading && /^Transactions\b/i.test(t) && t.length < 80 && !el.querySelector('li')) heading = el;
+    });
+    if (!heading) return;
+    const items = [];
     let node = heading.nextElementSibling ||
       (heading.parentElement && heading.parentElement !== div ? heading.parentElement.nextElementSibling : null);
     while (node) {
@@ -847,20 +848,32 @@ async function loadTransactions() {
       }
       node = node.nextElementSibling;
     }
-  }
-  txCache = { title: decodeEntities(p.title.rendered), link: p.link, headText, items };
+    if (items.length) {
+      sections.push({
+        headText: heading.textContent.trim(),
+        title: decodeEntities(p.title.rendered),
+        link: p.link,
+        items: items,
+      });
+    }
+  });
+  txCache = { sections };
   return txCache;
 }
 
 function renderTransactions(tx) {
-  setMeta('Pulled live from the latest Reliever Streamers article');
-  let h = '<div class="tx-wrap"><div class="tx-head">' + esc(tx.headText) + '</div>' +
-    '<div class="tx-src">From <a href="' + esc(tx.link) + '" target="_blank" rel="noopener">' +
-    esc(tx.title) + '</a></div>';
-  if (tx.items.length) {
-    h += '<div class="tx-list">' + tx.items.map(i => '<div class="tx-item">' + esc(i) + '</div>').join('') + '</div>';
+  setMeta('Pulled live from the Reliever Streamers series — one section per day, newest first');
+  let h = '<div class="tx-wrap">';
+  if (tx.sections.length) {
+    tx.sections.forEach(s => {
+      h += '<div class="tx-head">' + esc(s.headText) + '</div>' +
+        '<div class="tx-src">From <a href="' + esc(s.link) + '" target="_blank" rel="noopener">' +
+        esc(s.title) + '</a></div>' +
+        '<div class="tx-list" style="margin-bottom:26px">' +
+        s.items.map(i => '<div class="tx-item">' + esc(i) + '</div>').join('') + '</div>';
+    });
   } else {
-    h += '<div class="state-msg">No transactions listed in the latest article.</div>';
+    h += '<div class="state-msg">No transactions found in the recent articles.</div>';
   }
   h += footNotes(['If you’re looking for updated Bullpen Usage Charts for today: ' + STREAMER_CAT_URL]) +
     '</div>';
