@@ -825,10 +825,15 @@ async function resolvePlayerPage(name) {
     encodeURIComponent(name) + '&subtype=player&per_page=5&_fields=url,title')
     .then(r => r.json()).catch(() => []);
   const players = Array.isArray(res) ? res : [];
-  // Prefer an exact (accent-insensitive) title match; fall back to the first
-  // result, then to the site search page so the click always lands somewhere.
+  // Prefer an exact (accent-insensitive) title match. When two players share
+  // a name (e.g. edwin-diaz vs edwin-diaz-2), the RELIEVER owns the base slug
+  // without the numeric suffix — prefer it. Fall back to the site search page
+  // so the click always lands somewhere.
   const exact = players.filter(x => normName(decodeEntities(x.title)) === key);
-  const pick = (exact[0] || players[0]);
+  const pool = (exact.length ? exact : players).slice();
+  const noSuffix = u => !/-\d+\/?$/.test(String(u).replace(/\/$/, ''));
+  pool.sort((a, b) => (noSuffix(b.url) ? 1 : 0) - (noSuffix(a.url) ? 1 : 0));
+  const pick = pool[0];
   const url = pick ? pick.url : 'https://pitcherlist.com/?s=' + encodeURIComponent(name);
   plPageCache[key] = url;
   return url;
