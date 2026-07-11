@@ -213,6 +213,68 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .card.committee { border-top: 2px solid rgba(167,139,250,0.55); }
 .card.interim   { border-top: 2px solid rgba(245,185,80,0.55); }
 
+/* ── IL badge (from the Injured List sheet) ────────────── */
+.il-badge {
+  display: inline-block; margin-left: 8px; vertical-align: middle;
+  font: 700 9px/1 'DM Sans', sans-serif; letter-spacing: 0.06em;
+  color: var(--red); background: rgba(244,112,124,0.12);
+  border: 1px solid rgba(244,112,124,0.45); border-radius: 5px; padding: 2px 5px;
+}
+td .delta-il { color: var(--red); font-weight: 600; }
+td .delta-sp { color: var(--amber); font-weight: 600; }
+
+/* ── Clickable trend rows ──────────────────────────────── */
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: rgba(85,232,255,0.07) !important; }
+
+/* ── Player trend modal ────────────────────────────────── */
+.modal-back {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(7,9,18,0.72); backdrop-filter: blur(3px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 48px 16px; overflow-y: auto;
+}
+.modal {
+  background: var(--surface-2); border: 1px solid var(--border-table);
+  border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  width: 100%; max-width: 860px; padding: 22px 24px 24px; position: relative;
+}
+.modal-close {
+  position: absolute; top: 14px; right: 16px; cursor: pointer;
+  font: 600 15px 'Work Sans', sans-serif; color: var(--text-zero);
+  background: var(--surface-3); border: 1px solid var(--border-tab);
+  border-radius: 8px; padding: 5px 11px; user-select: none;
+}
+.modal-close:hover { color: #eef2fb; border-color: rgba(255,194,119,0.4); }
+.modal-title { font: 700 24px 'DM Sans', sans-serif; color: var(--text-player); }
+.modal-sub   { font: 500 14px 'Work Sans', sans-serif; color: var(--text-team); margin: 4px 0 16px; }
+.chart-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .chart-grid { grid-template-columns: 1fr; } }
+.chart-card {
+  background: var(--surface-3); border: 1px solid var(--border-table);
+  border-radius: 10px; padding: 12px 14px 10px;
+}
+.chart-card h4 { font: 600 13px 'Work Sans', sans-serif; color: var(--cyan-header); margin-bottom: 6px; }
+.chart-card svg { width: 100%; height: auto; display: block; }
+.chart-note { font: 400 11px 'Work Sans', sans-serif; color: var(--text-zero); margin-top: 6px; }
+
+/* ── Reliever Transactions ─────────────────────────────── */
+.tx-wrap { max-width: 900px; }
+.tx-head { font: 700 22px 'DM Sans', sans-serif; color: var(--text-player); margin-bottom: 4px; }
+.tx-src  { font: 400 13px 'Work Sans', sans-serif; color: var(--text-zero); margin-bottom: 16px; }
+.tx-src a { color: var(--cyan); text-decoration: none; }
+.tx-list { border: 1px solid var(--border-table); border-radius: 10px; overflow: hidden; }
+.tx-item {
+  padding: 11px 16px; font: 400 14px/1.45 'Work Sans', sans-serif; color: var(--text-cell);
+  border-bottom: 1px solid var(--border-row);
+}
+.tx-item:nth-child(odd)  { background: var(--row-a); }
+.tx-item:nth-child(even) { background: var(--row-b); }
+.tx-item:last-child { border-bottom: none; }
+
+/* ── Injured List tab ──────────────────────────────────── */
+td.wrap { white-space: normal; line-height: 1.5; max-width: 640px; }
+
 /* ── States ────────────────────────────────────────────── */
 .spinner {
   width: 26px; height: 26px; border-radius: 50%;
@@ -243,18 +305,32 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
    PL Reliever Board — pulls live data from the Google Sheet
    on every page load via the public gviz CSV endpoint.
    ════════════════════════════════════════════════════════ */
-const SHEET_ID = '1eCGn5vyJ5N3P-FemNUUB2yi_lDKNtB62_QTWTUXEiTA';
+const SHEET_ID    = '1eCGn5vyJ5N3P-FemNUUB2yi_lDKNtB62_QTWTUXEiTA';
+const IL_SHEET_ID = '1cw3DE06uDcpVzADQn1eAg3wWuxhati_RPuh6rf0v4-Q';
+const STREAMER_CAT_URL = 'https://pitcherlist.com/category/fantasy/relief-pitchers/reliever-streamers/';
+const STREAMER_API     = 'https://pitcherlist.com/wp-json/wp/v2/posts?categories=1369&per_page=1&_fields=title,link,date,content';
 
 const TABS = [
-  { label: 'RP Leaderboard',       sheet: 'RP Leaderboard',       type: 'statboard' },
-  { label: 'Past Month Board',     sheet: 'Past Month Board',     type: 'statboard' },
-  { label: 'SV+HLD Trends',        sheet: 'SV+HLD Trends',        type: 'statboard' },
-  { label: 'Combined Ranks',       sheet: 'Combined Ranks',       type: 'statboard' },
-  { label: 'Bullpen Depth Charts', sheet: 'Bullpen Depth Charts', type: 'depth'     },
-  { label: 'Save Only',            sheet: 'Save Only Ranks',      type: 'ranklist'  },
-  { label: "SV+HLD's",             sheet: 'SV+HLD Ranks',         type: 'ranklist'  },
-  { label: 'Closer Ranks Trends',  sheet: 'Closer Ranks Trends',  type: 'trends'    },
+  { label: 'RP Leaderboard',        sheet: 'RP Leaderboard',       type: 'statboard' },
+  { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard' },
+  { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard' },
+  { label: 'Combined Ranks',        sheet: 'Combined Ranks',       type: 'statboard' },
+  { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
+  { label: 'Closer Rank Trends',    sheet: 'Closer Rank Trends',   type: 'ranktrends',
+    ranksSheet: 'Save Only Ranks',  statHeader: 'SV',         statLabel: 'SV',
+    finalHeader: 'Final Y! Rank',   graph: 'closer' },
+  { label: 'SV+HLD Rank Trends',    sheet: 'SV+HLD Rank Trends',   type: 'ranktrends',
+    ranksSheet: 'SV+HLD Ranks',     statHeader: 'Save+Holds', statLabel: 'SV+HLD',
+    finalHeader: 'Final Fantrax Rank', graph: 'svhld' },
+  { label: 'Reliever Transactions', sheet: null, type: 'transactions' },
+  { label: 'Injured List',          sheet: null, type: 'il' },
 ];
+
+/* Publish dates for each ranking period (footer + graph x-axis). */
+const RANK_DATES = {
+  closer: { fall: '10/17/25', winter: '2/10/26', spring: '3/26/26', summer: '6/30/26', final: '9/28/26' },
+  svhld:  { fall: null,       winter: '2/9/26',  spring: '3/26/26', summer: '6/30/26', final: null      },
+};
 
 const cache = {};          // sheet name -> parsed rows
 let active = 0;
@@ -273,8 +349,9 @@ const $content = document.getElementById('content');
    and is re-prepended so every renderer sees row 0 = header.
    ─────────────────────────────────────────────────────────── */
 let jsonpSeq = 0;
-function loadSheet(sheet) {
-  if (cache[sheet]) return Promise.resolve(cache[sheet]);
+function loadSheet(sheet, docId) {
+  const key = (docId || SHEET_ID) + '::' + (sheet || '');
+  if (cache[key]) return Promise.resolve(cache[key]);
   return new Promise((resolve, reject) => {
     const cb = '__plBoardCb' + (jsonpSeq++);
     let done = false;
@@ -295,18 +372,39 @@ function loadSheet(sheet) {
           return r.slice(0, end);
         }).filter(r => r.length > 0);
         cleanup();
-        cache[sheet] = rows;
+        cache[key] = rows;
         resolve(rows);
       } catch (e) { cleanup(); reject(e); }
     };
     const s = document.createElement('script');
-    s.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    s.src = 'https://docs.google.com/spreadsheets/d/' + (docId || SHEET_ID) +
             '/gviz/tq?tqx=out:json;responseHandler:' + cb +
-            '&headers=1&sheet=' + encodeURIComponent(sheet) + '&_=' + Date.now();
+            (sheet ? '&headers=1&sheet=' + encodeURIComponent(sheet) : '&headers=1') +
+            '&_=' + Date.now();
     s.onerror = () => { if (!done) { cleanup(); reject(new Error('load failed')); } };
     const timer = setTimeout(() => { if (!done) { cleanup(); reject(new Error('timeout')); } }, 20000);
     document.head.appendChild(s);
   });
+}
+
+/* The Injured List sheet (separate spreadsheet, first tab). Returns
+   { set: Set<normalized name>, rows: [[pitcher, notes, estReturn]], stamp } */
+async function loadInjuredList() {
+  const rows = await loadSheet(null, IL_SHEET_ID);
+  const set = new Set();
+  const data = [];
+  let stamp = '';
+  rows.forEach((r, i) => {
+    const joined = r.join(' ');
+    const m = joined.match(/Last updated[^|]*/i);
+    if (m) { stamp = m[0].trim(); if (i === 0) return; }
+    if (i === 0) return;                       // header row
+    const nm = (r[0] || '').trim();
+    if (!nm || /^Last updated/i.test(nm)) return;
+    set.add(normName(nm));
+    data.push([nm, (r[1] || '').trim(), (r[2] || '').trim()]);
+  });
+  return { set, rows: data, stamp };
 }
 
 /* ── Helpers ───────────────────────────────────────────── */
@@ -326,10 +424,16 @@ function cellHtml(raw) {
   if (!isNaN(n) && n === 0) return '<span class="zero">' + esc(v) + '</span>';
   return esc(v);
 }
-function playerCell(name, team, flagged) {
+function playerCell(name, team, flagged, onIL) {
   const badge = flagged ? '<span class="sp-badge" title="Flagged as a true starter / bulk usage">SP</span>' : '';
-  return '<td class="player-cell"><div class="player-name">' + esc(name) + badge +
+  const il = onIL ? '<span class="il-badge" title="Currently on the injured list">IL</span>' : '';
+  return '<td class="player-cell"><div class="player-name">' + esc(name) + badge + il +
          '</div><div class="player-team">' + esc(team || '') + '</div></td>';
+}
+/* Accent/punctuation-insensitive name key: "Andrés Muñoz" → "andres munoz" */
+function normName(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 function setMeta(note) {
   $meta.textContent = note ? note.replace(/\s*\|\s*/g, ' · ') : '';
@@ -431,28 +535,352 @@ function sortableTh(label, col, tabIdx, numeric) {
   return '<th class="sortable' + (numeric ? ' num' : '') + '" data-col="' + col + '">' + esc(label) + arr + '</th>';
 }
 
-function renderRanklist(rows, tabIdx) {
-  const header = rows[0];
-  const note = (header[5] || '').trim();
-  const data = rows.slice(1).filter(r => (r[1] || '').trim() !== '');
-  let h = '<div class="table-wrap" style="max-width:560px"><div class="table-scroll"><table><thead><tr>' +
-          '<th class="num" style="width:64px">Rank</th><th>Player</th><th class="num" style="width:90px">Change</th>' +
-          '</tr></thead><tbody>';
-  for (const r of data) {
-    const ch = (r[3] || '').trim();
-    let chHtml = '<span class="zero">—</span>';
-    if (ch !== '') {
-      const n = numVal(ch);
-      if (!isNaN(n) && n > 0) chHtml = '<span class="up">▲ ' + esc(ch) + '</span>';
-      else if (!isNaN(n) && n < 0) chHtml = '<span class="down">▼ ' + esc(String(Math.abs(n))) + '</span>';
-      else chHtml = esc(ch);
+/* ── Rank Trends (current ranking merged with seasonal trend tab) ──
+   Column layout of both trend tabs on the sheet (fixed positions):
+   0 Pitcher · 1 Team · 2 Fall · 3 Winter · 4 Spring · 5 Summer ·
+   6 Final · 7-11 Δ columns · 12 IP · 13 SV (or Save+Holds) ·
+   14 ERA · 15 WHIP · 16 K · 17 Days Missed                        */
+const rankTrendsData = {};   // tabIdx -> { recs, tab } for the player modal
+
+function buildRankTrends(tab, trendRows, rankRows, ilSet) {
+  const cur = {};                                   // normalized name -> current rank
+  rankRows.slice(1).forEach(r => {
+    const nm = (r[1] || '').trim();
+    const rk = numVal(r[0]);
+    if (nm && !isNaN(rk)) cur[normName(nm)] = rk;
+  });
+  const stamp = ((rankRows[0] || [])[5] || '').trim();   // "Last updated: …" lives in F1
+
+  const recs = [];
+  trendRows.slice(1).forEach(r => {
+    const nm = (r[0] || '').trim();
+    if (!nm || isNoteRow(r)) return;
+    const v = i => (r[i] == null ? '' : String(r[i]).trim());
+    const key  = normName(nm);
+    const onIL = ilSet.has(key);
+    const dm   = v(17);
+    const inRot = /rotation/i.test(dm);
+    // Blank Δ where the earlier rank exists but the later one doesn't gets
+    // an explanation when we have one: SP (moved to rotation) or IL.
+    const delta = (raw, earlier, later) => {
+      if (raw !== '') return raw;
+      if (earlier !== '' && later === '') { if (inRot) return 'SP'; if (onIL) return 'IL'; }
+      return '';
+    };
+    recs.push({
+      name: nm, team: v(1), key, onIL,
+      cur:  cur.hasOwnProperty(key) ? String(cur[key]) : '',
+      fall: v(2), win: v(3), spr: v(4), sum: v(5), fin: v(6),
+      dfw: delta(v(7),  v(2), v(3)),
+      dws: delta(v(8),  v(3), v(4)),
+      dss: delta(v(9),  v(4), v(5)),
+      dsf: delta(v(10), v(5), v(6)),
+      dff: delta(v(11), v(2), v(6)),
+      ip: v(12), sv: v(13), era: v(14), whip: v(15), k: v(16), dm: dm,
+    });
+  });
+
+  // Default order: current rank asc; unranked pitchers after, by their
+  // most recent seasonal rank.
+  const altRank = x => {
+    for (const f of ['sum', 'spr', 'win', 'fall']) { const n = numVal(x[f]); if (!isNaN(n)) return n; }
+    return Infinity;
+  };
+  recs.sort((a, b) => {
+    const ar = a.cur === '' ? Infinity : +a.cur, br = b.cur === '' ? Infinity : +b.cur;
+    if (ar !== br) return ar - br;
+    return altRank(a) - altRank(b);
+  });
+  return { recs, stamp };
+}
+
+function renderRankTrends(tab, tabIdx, built) {
+  const D = RANK_DATES[tab.graph];
+  const COLS = [
+    ['Current Rank', 'cur'], ['Fall Rank', 'fall'], ['Winter Rank', 'win'],
+    ['Spring Rank', 'spr'], ['Summer Rank', 'sum'], [tab.finalHeader, 'fin'],
+    ['Fall→Winter Δ', 'dfw'], ['Winter→Spring Δ', 'dws'], ['Spring→Summer Δ', 'dss'],
+    ['Summer→Final Δ', 'dsf'], ['Fall→Final Δ', 'dff'],
+    ['IP', 'ip'], [tab.statLabel, 'sv'], ['ERA', 'era'], ['WHIP', 'whip'],
+    ['K', 'k'], ['Days Missed', 'dm'],
+  ];
+  const deltaFields = new Set(['dfw', 'dws', 'dss', 'dsf', 'dff']);
+
+  let recs = built.recs;
+  const st = sortState[tabIdx];
+  if (st) {
+    recs = recs.slice().sort((a, b) => {
+      if (st.col === 'player') return st.dir * a.name.localeCompare(b.name);
+      const av = numVal(a[st.col]), bv = numVal(b[st.col]);
+      if (isNaN(av) && isNaN(bv)) return 0;
+      if (isNaN(av)) return 1;
+      if (isNaN(bv)) return -1;
+      return st.dir * (av - bv);
+    });
+  }
+
+  let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
+  h += sortableTh('Player', 'player', tabIdx, false);
+  for (const [label, field] of COLS) h += sortableTh(label, field, tabIdx, true);
+  h += '</tr></thead><tbody>';
+  for (const r of recs) {
+    h += '<tr class="data-row clickable" data-key="' + esc(r.key) + '" title="Click for trend graphs">' +
+         playerCell(r.name, r.team, false, r.onIL);
+    for (const [, field] of COLS) {
+      const v = r[field];
+      if (deltaFields.has(field) && v !== '') {
+        if (v === 'IL') h += '<td class="num"><span class="delta-il">IL</span></td>';
+        else if (v === 'SP') h += '<td class="num"><span class="delta-sp">SP</span></td>';
+        else {
+          const n = numVal(v);
+          let cls = '', glyph = '';
+          if (!isNaN(n) && n > 0) { cls = 'up'; glyph = '▲ '; }
+          else if (!isNaN(n) && n < 0) { cls = 'down'; glyph = '▼ '; }
+          h += '<td class="num"><span class="' + cls + '">' + glyph +
+               esc(!isNaN(n) && n < 0 ? String(Math.abs(n)) : v) + '</span></td>';
+        }
+      } else {
+        h += '<td class="num">' + cellHtml(v) + '</td>';
+      }
     }
-    h += '<tr class="data-row"><td class="num">' + esc(r[0]) + '</td>' +
-         playerCell(r[1], r[2]) +
-         '<td class="num">' + chHtml + '</td></tr>';
+    h += '</tr>';
   }
   h += '</tbody></table></div></div>';
-  setMeta(note);
+
+  const dateBits = [];
+  if (D.fall)  dateBits.push('Fall Rank = ' + D.fall);
+  else         dateBits.push('Fall Rank starts next season');
+  dateBits.push('Winter Rank = ' + D.winter, 'Spring Rank = ' + D.spring, 'Summer Rank = ' + D.summer);
+  dateBits.push(tab.finalHeader + ' = ' + (D.final || 'end of season'));
+
+  h += footNotes([
+    'Current Rank ← “' + tab.ranksSheet + '” (my manual ranking, updated weekly)',
+    'Rank publish dates: ' + dateBits.join('  |  '),
+    'Δ columns: ▲ = rose in the ranks, ▼ = fell  |  IL = dropped out while on the injured list  |  SP = moved to the rotation  |  blank = not ranked that period',
+    'IL badge = currently on the injured list  |  Click any player for rank, ERA, WHIP and K% trend graphs',
+  ]);
+  setMeta(built.stamp || '');
+  return h;
+}
+
+/* ── Player trend modal + charts ───────────────────────── */
+const playerStatCache = {};
+
+function parseMDY(s) {
+  const p = String(s).split('/').map(Number);
+  return new Date(p[2] < 100 ? 2000 + p[2] : p[2], p[0] - 1, p[1]).getTime();
+}
+
+function lineChart(pts, opts) {
+  opts = opts || {};
+  if (!pts || pts.length < 2) return '<div class="chart-note">Not enough data yet.</div>';
+  const W = 380, H = 150, padL = 38, padR = 14, padT = 12, padB = 24;
+  const xs = pts.map(p => p.t), ys = pts.map(p => p.y);
+  let y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  if (y0 === y1) { y0 -= 1; y1 += 1; }
+  const pad = (y1 - y0) * 0.1; y0 -= pad; y1 += pad;
+  if (opts.floorZero && y0 < 0) y0 = 0;
+  const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+  const X = t => padL + (W - padL - padR) * (x1 === x0 ? 0.5 : (t - x0) / (x1 - x0));
+  const Y = v => opts.invert
+    ? padT + (H - padT - padB) * ((v - y0) / (y1 - y0))
+    : H - padB - (H - padT - padB) * ((v - y0) / (y1 - y0));
+  const fmt  = opts.fmt || (v => String(Math.round(v * 100) / 100));
+  const dFmt = t => { const d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate(); };
+  const axis = 'fill="rgba(164,170,202,0.8)" font-size="10" font-family="Work Sans, sans-serif"';
+
+  let h = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+  const topVal = opts.invert ? y0 : y1, botVal = opts.invert ? y1 : y0;
+  h += '<line x1="' + padL + '" y1="' + padT + '" x2="' + (W - padR) + '" y2="' + padT + '" stroke="rgba(140,165,210,0.18)"/>' +
+       '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="rgba(140,165,210,0.18)"/>' +
+       '<text x="4" y="' + (padT + 4) + '" ' + axis + '>' + esc(fmt(topVal)) + '</text>' +
+       '<text x="4" y="' + (H - padB + 4) + '" ' + axis + '>' + esc(fmt(botVal)) + '</text>';
+  h += '<polyline fill="none" stroke="#55e8ff" stroke-width="2" stroke-linejoin="round" points="' +
+       pts.map(p => X(p.t).toFixed(1) + ',' + Y(p.y).toFixed(1)).join(' ') + '"/>';
+  pts.forEach((p, idx) => {
+    const cx = X(p.t).toFixed(1), cy = Y(p.y).toFixed(1);
+    if (opts.showPoints) {
+      h += '<circle cx="' + cx + '" cy="' + cy + '" r="3.5" fill="#ffc277"/>' +
+           '<text x="' + cx + '" y="' + (Y(p.y) - 8).toFixed(1) + '" text-anchor="middle" fill="#ffc277" font-size="11" font-weight="600" font-family="Work Sans, sans-serif">' + esc(fmt(p.y)) + '</text>';
+      if (p.lbl) h += '<text x="' + cx + '" y="' + (H - padB + 14) + '" text-anchor="middle" ' + axis + '>' + esc(p.lbl) + '</text>';
+    } else if (idx === 0 || idx === pts.length - 1) {
+      h += '<text x="' + cx + '" y="' + (H - padB + 14) + '" text-anchor="' + (idx === 0 ? 'start' : 'end') + '" ' + axis + '>' + dFmt(p.t) + '</text>';
+    }
+  });
+  h += '</svg>';
+  return h;
+}
+
+function ipOuts(ip) {
+  const p = String(ip || '0').split('.');
+  return (+p[0] || 0) * 3 + (+(p[1] || 0));
+}
+
+async function loadPlayerStats(rec) {
+  if (playerStatCache[rec.key]) return playerStatCache[rec.key];
+  const sr = await fetch('https://statsapi.mlb.com/api/v1/people/search?names=' +
+    encodeURIComponent(rec.name) + '&sportIds=1').then(r => r.json());
+  const people = sr.people || [];
+  const p = people.find(x => x.primaryPosition &&
+        /pitcher/i.test(String(x.primaryPosition.type || '') + String(x.primaryPosition.name || ''))) || people[0];
+  if (!p) throw new Error('player not found');
+  const gl = await fetch('https://statsapi.mlb.com/api/v1/people/' + p.id +
+    '/stats?stats=gameLog&season=2026&group=pitching').then(r => r.json());
+  const splits = ((gl.stats || [])[0] || {}).splits || [];
+  splits.sort((a, b) => (a.date < b.date ? -1 : 1));
+  let outs = 0, er = 0, hits = 0, bb = 0, so = 0, tbf = 0;
+  const era = [], whip = [], kpct = [];
+  splits.forEach(s => {
+    const st = s.stat || {};
+    outs += ipOuts(st.inningsPitched);
+    er += +st.earnedRuns || 0; hits += +st.hits || 0;
+    bb += +st.baseOnBalls || 0; so += +st.strikeOuts || 0; tbf += +st.battersFaced || 0;
+    const t = new Date(s.date + 'T12:00:00').getTime();
+    const ip = outs / 3;
+    if (ip > 0) { era.push({ t, y: 9 * er / ip }); whip.push({ t, y: (hits + bb) / ip }); }
+    if (tbf > 0) kpct.push({ t, y: 100 * so / tbf });
+  });
+  const out = { era, whip, kpct, games: splits.length };
+  playerStatCache[rec.key] = out;
+  return out;
+}
+
+function openPlayerModal(tabIdx, key) {
+  const store = rankTrendsData[tabIdx];
+  if (!store) return;
+  const rec = store.recs.find(r => r.key === key);
+  if (!rec) return;
+  const D = RANK_DATES[store.tab.graph];
+
+  const rankPts = [];
+  const addPt = (lbl, dateStr, val) => {
+    const n = numVal(val);
+    if (!isNaN(n) && dateStr) rankPts.push({ lbl, t: parseMDY(dateStr), y: n });
+  };
+  addPt('Fall', D.fall, rec.fall);
+  addPt('Winter', D.winter, rec.win);
+  addPt('Spring', D.spring, rec.spr);
+  addPt('Summer', D.summer, rec.sum);
+  if (D.final) addPt('Final', D.final, rec.fin);
+  const curN = numVal(rec.cur);
+  if (!isNaN(curN)) rankPts.push({ lbl: 'Now', t: Date.now(), y: curN });
+  rankPts.sort((a, b) => a.t - b.t);
+
+  const chartCard = (title, body, note) =>
+    '<div class="chart-card"><h4>' + esc(title) + '</h4>' + body +
+    (note ? '<div class="chart-note">' + esc(note) + '</div>' : '') + '</div>';
+
+  const rankSvg = lineChart(rankPts, {
+    invert: true, showPoints: true, fmt: v => String(Math.round(v)),
+  });
+
+  let h = '<div class="modal-back" id="playerModal"><div class="modal">' +
+    '<span class="modal-close" id="modalClose">✕ Close</span>' +
+    '<div class="modal-title">' + esc(rec.name) +
+    (rec.onIL ? '<span class="il-badge" style="vertical-align:middle">IL</span>' : '') + '</div>' +
+    '<div class="modal-sub">' + esc(rec.team || '') +
+    (rec.dm !== '' && rec.dm !== '0' ? '  ·  Days missed: ' + esc(rec.dm) : '') + '</div>' +
+    '<div class="chart-grid">' +
+    chartCard('Rank over time (lower = better)', rankSvg) +
+    '<div class="chart-card" id="chERA"><h4>ERA — season progression</h4><div class="spinner" style="margin:36px auto"></div></div>' +
+    '<div class="chart-card" id="chWHIP"><h4>WHIP — season progression</h4><div class="spinner" style="margin:36px auto"></div></div>' +
+    '<div class="chart-card" id="chK"><h4>K% — season progression</h4><div class="spinner" style="margin:36px auto"></div></div>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', h);
+
+  loadPlayerStats(rec).then(sr => {
+    const put = (id, title, pts, opts) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<h4>' + esc(title) + '</h4>' + lineChart(pts, opts) +
+        '<div class="chart-note">Cumulative through each appearance · MLB game logs</div>';
+    };
+    put('chERA',  'ERA — season progression',  sr.era,  { fmt: v => v.toFixed(2), floorZero: true });
+    put('chWHIP', 'WHIP — season progression', sr.whip, { fmt: v => v.toFixed(2), floorZero: true });
+    put('chK',    'K% — season progression',   sr.kpct, { fmt: v => Math.round(v) + '%', floorZero: true });
+  }).catch(() => {
+    ['chERA', 'chWHIP', 'chK'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = el.querySelector('h4').outerHTML +
+        '<div class="chart-note">Season graphs unavailable right now.</div>';
+    });
+  });
+}
+
+/* ── Reliever Transactions (latest Reliever Streamers article) ── */
+let txCache = null;
+
+function decodeEntities(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return d.textContent || '';
+}
+
+async function loadTransactions() {
+  if (txCache) return txCache;
+  const posts = await fetch(STREAMER_API).then(r => r.json());
+  const p = posts && posts[0];
+  if (!p) throw new Error('no post');
+  const div = document.createElement('div');
+  div.innerHTML = p.content.rendered;
+  // The "Transactions (…)" header is sometimes a real heading, sometimes a
+  // styled <p>/<strong>. Match any short element whose text starts with
+  // "Transactions" and that doesn't itself contain the list.
+  let heading = null;
+  div.querySelectorAll('h1,h2,h3,h4,h5,h6,p,strong,b,div').forEach(el => {
+    const t = (el.textContent || '').trim();
+    if (!heading && /^Transactions\b/i.test(t) && t.length < 80 && !el.querySelector('li')) heading = el;
+  });
+  const items = [];
+  let headText = 'Transactions';
+  if (heading) {
+    headText = heading.textContent.trim();
+    let node = heading.nextElementSibling ||
+      (heading.parentElement && heading.parentElement !== div ? heading.parentElement.nextElementSibling : null);
+    while (node) {
+      if (/^H[1-6]$/.test(node.tagName)) break;
+      const lis = node.querySelectorAll('li');
+      if (lis.length) {
+        lis.forEach(li => items.push(li.textContent.trim()));
+      } else if (items.length && (node.textContent || '').trim() !== '') {
+        break;   // list done — next section is starting
+      }
+      node = node.nextElementSibling;
+    }
+  }
+  txCache = { title: decodeEntities(p.title.rendered), link: p.link, headText, items };
+  return txCache;
+}
+
+function renderTransactions(tx) {
+  setMeta('Pulled live from the latest Reliever Streamers article');
+  let h = '<div class="tx-wrap"><div class="tx-head">' + esc(tx.headText) + '</div>' +
+    '<div class="tx-src">From <a href="' + esc(tx.link) + '" target="_blank" rel="noopener">' +
+    esc(tx.title) + '</a></div>';
+  if (tx.items.length) {
+    h += '<div class="tx-list">' + tx.items.map(i => '<div class="tx-item">' + esc(i) + '</div>').join('') + '</div>';
+  } else {
+    h += '<div class="state-msg">No transactions listed in the latest article.</div>';
+  }
+  h += footNotes(['If you’re looking for updated Bullpen Usage Charts for today: ' + STREAMER_CAT_URL]) +
+    '</div>';
+  return h;
+}
+
+/* ── Injured List tab ──────────────────────────────────── */
+function renderILTab(il) {
+  setMeta(il.stamp || ('Data as of ' + new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })));
+  let h = '<div class="table-wrap" style="max-width:1020px"><div class="table-scroll"><table><thead><tr>' +
+    '<th style="width:190px">Player</th><th>Notes</th><th style="width:130px">Est. Return</th>' +
+    '</tr></thead><tbody>';
+  for (const r of il.rows) {
+    h += '<tr><td class="player-cell"><div class="player-name">' + esc(r[0]) +
+      '<span class="il-badge">IL</span></div></td>' +
+      '<td class="wrap">' + esc(r[1]) + '</td>' +
+      '<td>' + cellHtml(r[2]) + '</td></tr>';
+  }
+  h += '</tbody></table></div></div>';
+  h += footNotes([il.rows.length + ' pitcher(s) currently listed  |  Feeds live from the Injured List tracker sheet']);
   return h;
 }
 
@@ -525,55 +953,10 @@ function renderDepth(rows) {
       i = j;
     } else i++;
   }
-  h += footNotes(['CL = Closer · CO = Co-Closer · SU = Setup · MR = Middle Relief · Gold handedness = LHP · Card color = closer situation (green STABLE · amber CAUTIOUS · red UNSTABLE · violet COMMITTEE · gold INTERIM)']);
-  return h;
-}
-
-function renderTrends(rows, tabIdx) {
-  const header = rows[0];
-  let data = rows.slice(1).filter(r => !isNoteRow(r) && (r[0] || '').trim() !== '');
-  const cols = [];
-  for (let i = 2; i < header.length; i++) cols.push(i);
-  const deltaCols = new Set(cols.filter(i => /Δ|→/.test(header[i] || '')));
-
-  const st = sortState[tabIdx];
-  if (st) {
-    data = data.slice().sort((a, b) => {
-      if (st.col === 'player') return st.dir * String(a[0]).localeCompare(String(b[0]));
-      const av = numVal(a[st.col]), bv = numVal(b[st.col]);
-      if (isNaN(av) && isNaN(bv)) return 0;
-      if (isNaN(av)) return 1;
-      if (isNaN(bv)) return -1;
-      return st.dir * (av - bv);
-    });
-  }
-
-  let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
-  h += sortableTh('Player', 'player', tabIdx, false);
-  for (const i of cols) h += sortableTh(header[i], i, tabIdx, true);
-  h += '</tr></thead><tbody>';
-  for (const r of data) {
-    h += '<tr class="data-row">' + playerCell(r[0], r[1]);
-    for (const i of cols) {
-      const v = (r[i] || '').trim();
-      if (deltaCols.has(i) && v !== '') {
-        const n = numVal(v);
-        let cls = '', glyph = '';
-        if (!isNaN(n) && n > 0) { cls = 'up'; glyph = '▲ '; }
-        else if (!isNaN(n) && n < 0) { cls = 'down'; glyph = '▼ '; }
-        h += '<td class="num"><span class="' + cls + '">' + glyph + esc(!isNaN(n) && n < 0 ? String(Math.abs(n)) : v) + '</span></td>';
-      } else {
-        h += '<td class="num">' + cellHtml(v) + '</td>';
-      }
-    }
-    h += '</tr>';
-  }
-  h += '</tbody></table></div></div>';
   h += footNotes([
-    'Rank publish dates: Fall Rank = 10/17/25 | Winter Rank = 2/10/26 | Spring Rank = 3/26/26 | Summer Rank = 6/30/26 | Final Y! Rank = 9/28/26',
-    'Δ columns: ▲ = rose in the ranks, ▼ = fell. Blank seasonal columns have not been ranked yet.'
+    'CL = Closer · CO = Co-Closer · SU = Setup · MR = Middle Relief · Gold handedness = LHP · Card color = closer situation (green STABLE · amber CAUTIOUS · red UNSTABLE · violet COMMITTEE · gold INTERIM)',
+    'If you’re looking for potential relievers to stream each day: ' + STREAMER_CAT_URL,
   ]);
-  setMeta('');
   return h;
 }
 
@@ -606,63 +989,118 @@ $content.addEventListener('change', e => {
 });
 $content.addEventListener('click', e => {
   const th = e.target.closest('th.sortable');
-  if (!th) return;
-  const colRaw = th.dataset.col;
-  const col = colRaw === 'player' ? 'player' : +colRaw;
-  const st = sortState[active];
-  if (st && String(st.col) === String(col)) st.dir = -st.dir;
-  else sortState[active] = { col, dir: col === 'player' ? 1 : -1 };
-  show(active);
+  if (th) {
+    const colRaw = th.dataset.col;
+    const col = colRaw === 'player' ? 'player' : (isNaN(+colRaw) ? colRaw : +colRaw);
+    const st = sortState[active];
+    if (st && String(st.col) === String(col)) st.dir = -st.dir;
+    else sortState[active] = { col, dir: (col === 'player' || typeof col === 'string') ? 1 : -1 };
+    show(active);
+    return;
+  }
+  const tr = e.target.closest('tr.clickable');
+  if (tr && TABS[active] && TABS[active].type === 'ranktrends') {
+    openPlayerModal(active, tr.dataset.key);
+  }
 });
+
+/* Player-modal close: ✕ button, backdrop click, or Escape. */
+document.addEventListener('click', e => {
+  const back = document.getElementById('playerModal');
+  if (!back) return;
+  if (e.target.id === 'modalClose' || e.target === back) back.remove();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const back = document.getElementById('playerModal');
+    if (back) back.remove();
+  }
+});
+
+function tabReady(tab) {
+  const have = (s, id) => ((id || SHEET_ID) + '::' + (s || '')) in cache;
+  if (tab.type === 'transactions') return !!txCache;
+  if (tab.type === 'il')           return have(null, IL_SHEET_ID);
+  if (tab.type === 'ranktrends')   return have(tab.sheet) && have(tab.ranksSheet) && have(null, IL_SHEET_ID);
+  return have(tab.sheet);
+}
 
 async function show(i) {
   const tab = TABS[i];
-  if (!cache[tab.sheet]) $content.innerHTML = '<div class="spinner"></div>';
+  if (!tabReady(tab)) $content.innerHTML = '<div class="spinner"></div>';
   try {
-    const rows = await loadSheet(tab.sheet);
-    if (i !== active) return;          // user moved on
-    if (!rows || rows.length < 2) {
-      $content.innerHTML = '<div class="state-msg">No data available right now — the board keeps its shape.</div>';
-      setMeta('');
-      return;
-    }
     let html = '';
-    if (tab.type === 'statboard') html = renderStatboard(rows, i);
-    else if (tab.type === 'ranklist') html = renderRanklist(rows, i);
-    else if (tab.type === 'depth') html = renderDepth(rows);
-    else html = renderTrends(rows, i);
+    if (tab.type === 'ranktrends') {
+      const [trendRows, rankRows, il] = await Promise.all([
+        loadSheet(tab.sheet),
+        loadSheet(tab.ranksSheet),
+        loadInjuredList().catch(() => ({ set: new Set(), rows: [], stamp: '' })),
+      ]);
+      if (i !== active) return;
+      if (!trendRows || trendRows.length < 2) throw new Error('no data');
+      const built = buildRankTrends(tab, trendRows, rankRows || [[]], il.set);
+      rankTrendsData[i] = { recs: built.recs, tab };
+      html = renderRankTrends(tab, i, built);
+    } else if (tab.type === 'transactions') {
+      const tx = await loadTransactions();
+      if (i !== active) return;
+      html = renderTransactions(tx);
+    } else if (tab.type === 'il') {
+      const il = await loadInjuredList();
+      if (i !== active) return;
+      html = renderILTab(il);
+    } else {
+      const rows = await loadSheet(tab.sheet);
+      if (i !== active) return;          // user moved on
+      if (!rows || rows.length < 2) {
+        $content.innerHTML = '<div class="state-msg">No data available right now — the board keeps its shape.</div>';
+        setMeta('');
+        return;
+      }
+      html = tab.type === 'depth' ? renderDepth(rows) : renderStatboard(rows, i);
+    }
     $content.innerHTML = html;
   } catch (err) {
     if (i !== active) return;
-    $content.innerHTML = '<div class="state-msg">Couldn’t reach the live board data. Check your connection and reload.</div>';
+    $content.innerHTML = '<div class="state-msg">Couldn’t reach the live data for this tab. Check your connection and reload.</div>';
     setMeta('');
   }
 }
 
+function warmCaches() {
+  TABS.forEach((t, i) => {
+    if (i !== active && t.sheet) loadSheet(t.sheet).catch(() => {});
+    if (t.ranksSheet) loadSheet(t.ranksSheet).catch(() => {});
+  });
+  loadInjuredList().catch(() => {});
+  loadTransactions().catch(() => {});
+}
+
 renderTabs();
 show(active);
-/* warm the cache for the other tabs in the background */
-TABS.forEach((t, i) => { if (i !== active) loadSheet(t.sheet).catch(() => {}); });
+warmCaches();
 
 /* ── Auto-refresh ──────────────────────────────────────────
    Every page load always pulls fresh data. For tabs left
-   open: re-pull at 8:00 AM and 2:00 PM ET daily, and when
-   returning to a tab idle for 15+ minutes.
+   open: re-pull at 8:00 AM, 11:00 AM (new Reliever Streamers
+   article/transactions) and 2:00 PM ET daily, plus whenever
+   the tab has been hidden for 15+ minutes.
    ─────────────────────────────────────────────────────────── */
 let lastRefresh = Date.now();
 let lastSlot = '';
 function refreshAll() {
   for (const k in cache) delete cache[k];
+  txCache = null;
   lastRefresh = Date.now();
   show(active);
-  TABS.forEach((t, i) => { if (i !== active) loadSheet(t.sheet).catch(() => {}); });
+  warmCaches();
 }
 setInterval(() => {
   let et;
   try {
     et = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit' }).format(new Date());
   } catch (e) { return; }
-  if (et === '08:00' || et === '14:00') {
+  if (et === '08:00' || et === '11:00' || et === '14:00') {
     const slot = et + '|' + new Date().toDateString();
     if (lastSlot !== slot) { lastSlot = slot; refreshAll(); }
   }
