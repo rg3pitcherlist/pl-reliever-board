@@ -326,7 +326,7 @@ const TABS = [
     finalHeader: 'Final Y! Rank',   graph: 'closer' },
   { label: 'SV+HLD Ranks',          sheet: 'SV+HLD Rank Trends',   type: 'ranktrends',
     ranksSheet: 'SV+HLD Ranks',     statHeader: 'Save+Holds', statLabel: 'SV+HLD',
-    finalHeader: 'Final Fantrax Rank', graph: 'svhld' },
+    finalHeader: 'Final Fantrax Rk.', graph: 'svhld' },
   { label: 'Transactions',          sheet: null, type: 'transactions' },
   { label: 'Injured List',          sheet: null, type: 'il' },
 ];
@@ -608,14 +608,19 @@ function buildRankTrends(tab, trendRows, rankRows, ilSet) {
 
 function renderRankTrends(tab, tabIdx, built) {
   const D = RANK_DATES[tab.graph];
+  // No Fall ranking yet for this list (D.fall is null) → hide the Fall Rank
+  // column and its two Δ columns until next season's Fall list exists.
+  const hasFall = !!D.fall;
   const COLS = [
-    ['Current Rank', 'cur'], ['Fall Rank', 'fall'], ['Winter Rank', 'win'],
-    ['Spring Rank', 'spr'], ['Summer Rank', 'sum'], [tab.finalHeader, 'fin'],
-    ['Fall→Winter Δ', 'dfw'], ['Winter→Spring Δ', 'dws'], ['Spring→Summer Δ', 'dss'],
-    ['Summer→Final Δ', 'dsf'], ['Fall→Final Δ', 'dff'],
+    ['Current Rank', 'cur'],
+  ].concat(hasFall ? [['Fall Rank', 'fall']] : []).concat([
+    ['Winter Rank', 'win'], ['Spring Rank', 'spr'], ['Summer Rank', 'sum'], [tab.finalHeader, 'fin'],
+  ]).concat(hasFall ? [['Fall→Winter Δ', 'dfw']] : []).concat([
+    ['Winter→Spring Δ', 'dws'], ['Spring→Summer Δ', 'dss'], ['Summer→Final Δ', 'dsf'],
+  ]).concat(hasFall ? [['Fall→Final Δ', 'dff']] : []).concat([
     ['IP', 'ip'], [tab.statLabel, 'sv'], ['ERA', 'era'], ['WHIP', 'whip'],
     ['K', 'k'], ['Days Missed', 'dm'],
-  ];
+  ]);
   const deltaFields = new Set(['dfw', 'dws', 'dss', 'dsf', 'dff']);
 
   let recs = built.recs;
@@ -893,7 +898,16 @@ async function loadTransactions() {
           else if (n.nodeType === 1) {
             if (n.tagName === 'A') {
               const t = esc(n.textContent);
-              out += boldSet.has(n) ? '<strong>' + t + '</strong>' : t;
+              if (boldSet.has(n)) {
+                // Bold + clickable → Pitcher List player page. Use the article's
+                // own /player/ link when present; otherwise resolve by name.
+                const href = n.getAttribute('href') || '';
+                const direct = /\/player\//.test(href) ? ' data-plurl="' + esc(href) + '"' : '';
+                out += '<strong class="pl-name-link" data-plname="' + esc(n.textContent.trim()) + '"' +
+                       direct + ' title="Open Pitcher List player page">' + t + '</strong>';
+              } else {
+                out += t;
+              }
             } else walk(n);
           }
         });
@@ -1078,7 +1092,11 @@ $content.addEventListener('click', e => {
     return;
   }
   const nm = e.target.closest('.pl-name-link');
-  if (nm) { openPlayerPage(nm.dataset.plname); return; }
+  if (nm) {
+    if (nm.dataset.plurl) window.open(nm.dataset.plurl, '_blank');
+    else openPlayerPage(nm.dataset.plname);
+    return;
+  }
   const tr = e.target.closest('tr.clickable');
   if (tr && TABS[active] && TABS[active].type === 'ranktrends') {
     openPlayerModal(active, tr.dataset.key);
