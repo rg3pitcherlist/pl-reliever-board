@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pitcher List's Reliever Dashboard</title>
+<title>Ricks Reliever Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -299,7 +299,7 @@ td.wrap { white-space: normal; line-height: 1.5; }
 </head>
 <body>
 <div class="league-header">
-  <div class="league-title">Pitcher List's Reliever Dashboard</div>
+  <div class="league-title">Ricks Reliever Dashboard</div>
   <div class="league-meta" id="meta">Loading&hellip;</div>
   <div class="tabs" id="tabs"></div>
 </div>
@@ -518,27 +518,46 @@ function renderStatboard(rows, tabIdx) {
     metaNote = metaNote.replace(/Window:[^|]*/i, 'Window: Past 30 Days  ');
   }
 
-  /* SV+HLD Trends and Combined Ranks: split the meta legend onto a second
-     line for readability (and Combined Ranks drops its sort-order note). */
-  if (sheetName === 'SV+HLD Trends' || sheetName === 'Combined Ranks') {
+  /* Meta legend: split onto a second line at the tab's "headline" note so the
+     stamp/thresholds stay on line 1 and the scoring key sits on line 2. */
+  const BREAK_AT = {
+    'RP Leaderboard':   /^RP Score\s*=/i,
+    'Past Month Board': /^RP Score\s*=/i,
+    'SV+HLD Trends':    /^Usage\s*=/i,
+    'Combined Ranks':   /^SV\+HLD Rank/i,
+  };
+  const breakRe = BREAK_AT[sheetName];
+  if (breakRe) {
     if (sheetName === 'Combined Ranks') {
       metaNote = metaNote.replace(/your manual ranking/i, 'my manual ranking');
     }
     let parts = metaNote.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
+    // Drop the trailing "weights on …" hint if an older run still writes it.
+    parts = parts.map(p => p.replace(/\s*;?\s*weights on\s*[“"]?Score Weights[”"]?\s*tab\s*\)?/i,
+                                     m => /\)$/.test(m) ? ')' : ''));
     if (sheetName === 'Combined Ranks') {
       parts = parts.filter(p => !/^Sorted by Combined (Rank|Score)/i.test(p));
       const svIdx = parts.findIndex(p => /^SV\+HLD Rank/i.test(p));
       if (svIdx !== -1) parts.splice(svIdx + 1, 0,
         'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Rank)',
-        'SV+HLD’s = total Saves + Holds this season');
+        'SV+HLD’s = total Saves + Holds for the season');
+      // Combined Score explanation gets its own line at the end.
+      const cIdx = parts.findIndex(p => /^Combined (Rank|Score)\s*=/i.test(p));
+      if (cIdx !== -1) {
+        const line3 = parts.splice(cIdx, 1);
+        const idx2 = parts.findIndex(p => breakRe.test(p));
+        $meta.innerHTML = esc(parts.slice(0, idx2 < 0 ? parts.length : idx2).join(' · ')) +
+          (idx2 >= 0 ? '<br>' + esc(parts.slice(idx2).join(' · ')) : '') +
+          '<br>' + esc(line3[0]);
+        return h;
+      }
     }
-    const breakRe = sheetName === 'Combined Ranks' ? /^SV\+HLD Rank/i : /^Usage\s*=/i;
     const idx = parts.findIndex(p => breakRe.test(p));
     if (idx > 0) {
       $meta.innerHTML = esc(parts.slice(0, idx).join(' · ')) + '<br>' +
                         esc(parts.slice(idx).join(' · '));
     } else {
-      setMeta(metaNote);
+      setMeta(parts.join(' | '));
     }
   } else {
     setMeta(metaNote);
