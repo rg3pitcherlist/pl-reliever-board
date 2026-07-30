@@ -526,7 +526,7 @@ function renderStatboard(rows, tabIdx) {
     }
     let parts = metaNote.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
     if (sheetName === 'Combined Ranks') {
-      parts = parts.filter(p => !/^Sorted by Combined Rank/i.test(p));
+      parts = parts.filter(p => !/^Sorted by Combined (Rank|Score)/i.test(p));
       const svIdx = parts.findIndex(p => /^SV\+HLD Rank/i.test(p));
       if (svIdx !== -1) parts.splice(svIdx + 1, 0,
         'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Rank)',
@@ -1152,11 +1152,25 @@ function buildCombinedRows(rows, rankRows, svhldTotals) {
     if (nm && !isNaN(rk)) cur[normName(nm)] = String(rk);
   });
   const H = rows[0].map(h => String(h).trim());
-  const ix = n => H.findIndex(h => h.toUpperCase() === n.toUpperCase());
-  const iUsage = ix('Usage Rank'), iP30 = ix('Past 30 Rank'), iOv = ix('Overall Rank'),
-        iSVR = ix('SV+HLD Rank'), iComb = ix('Combined Rank'), iSP = ix('SP');
+  // Tolerant lookup: the sheet's columns were renamed Rank → Score when the
+  // RP Score model landed; accept either so the board works with both.
+  const ix = names => {
+    for (const n of names) {
+      const i = H.findIndex(h => h.toUpperCase() === n.toUpperCase());
+      if (i !== -1) return i;
+    }
+    return -1;
+  };
+  const iUsage = ix(['Usage Score', 'Usage Rank']),
+        iP30   = ix(['Past 30 Score', 'Past 30 Rank']),
+        iOv    = ix(['Overall Score', 'Overall Rank']),
+        iSVR   = ix(['SV+HLD Rank']),
+        iComb  = ix(['Combined Score', 'Combined Rank']),
+        iSP    = ix(['SP']);
+  const lbl = i => (i === -1 ? '' : H[i]);
   const out = [['Name', 'Team', 'Save Only Rank', 'SV+HLD Rank', 'SV+HLD’s',
-                'Usage Rank', 'Past 30 Rank', 'Overall Rank', 'Combined Rank', 'SP']];
+                lbl(iUsage) || 'Usage Score', lbl(iP30) || 'Past 30 Score',
+                lbl(iOv) || 'Overall Score', lbl(iComb) || 'Combined Score', 'SP']];
   rows.slice(1).forEach(r => {
     if (isNoteRow(r) || (r[0] || '').trim() === '') { out.push(r); return; }
     const nm = (r[0] || '').trim();
