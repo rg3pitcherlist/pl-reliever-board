@@ -541,16 +541,17 @@ function renderStatboard(rows, tabIdx) {
       if (svIdx !== -1) parts.splice(svIdx + 1, 0,
         'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Rank)',
         'SV+HLD’s = total Saves + Holds for the season');
-      // Combined Score explanation gets its own line at the end.
-      const cIdx = parts.findIndex(p => /^Combined (Rank|Score)\s*=/i.test(p));
-      if (cIdx !== -1) {
-        const line3 = parts.splice(cIdx, 1);
-        const idx2 = parts.findIndex(p => breakRe.test(p));
-        $meta.innerHTML = esc(parts.slice(0, idx2 < 0 ? parts.length : idx2).join(' · ')) +
-          (idx2 >= 0 ? '<br>' + esc(parts.slice(idx2).join(' · ')) : '') +
-          '<br>' + esc(line3[0]);
-        return h;
-      }
+      // Three lines: sources · manual ranks · the two score definitions
+      // (SV+HLD’s and Combined Score share the last line).
+      const isScoreDef = p => /^SV\+HLD[’']s\s*=/i.test(p) || /^Combined (Rank|Score)\s*=/i.test(p);
+      const defs = parts.filter(isScoreDef);
+      const rest = parts.filter(p => !isScoreDef(p));
+      const bi   = rest.findIndex(p => breakRe.test(p));
+      const l1   = bi > 0 ? rest.slice(0, bi) : rest;
+      const l2   = bi > 0 ? rest.slice(bi) : [];
+      $meta.innerHTML = [l1, l2, defs].filter(a => a.length)
+        .map(a => esc(a.join(' · '))).join('<br>');
+      return h;
     }
     const idx = parts.findIndex(p => breakRe.test(p));
     if (idx > 0) {
