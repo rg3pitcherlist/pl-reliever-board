@@ -503,9 +503,14 @@ function renderStatboard(rows, tabIdx) {
     h += '</tr>';
   }
   h += '</tbody></table></div></div>';
-  h += footNotes(notes.filter(n => !/^Last updated/i.test(n)));
-  let metaNote = notes.find(n => /^Last updated/i.test(n)) || '';
   const sheetName = TABS[tabIdx] && TABS[tabIdx].sheet;
+  const extraNotes = notes.filter(n => !/^Last updated/i.test(n));
+  if (sheetName === 'SV+HLD Trends') {
+    extraNotes.push('Stay up to date with the latest save and hold getters: ' +
+      'https://x.com/PitcherListSVs  |  https://bsky.app/profile/pitcherlistsaves.pitcherlist.com');
+  }
+  h += footNotes(extraNotes);
+  let metaNote = notes.find(n => /^Last updated/i.test(n)) || '';
 
   /* Past Month Board: 50-pitch PLV minimum + friendlier rolling-window label. */
   if (sheetName === 'Past Month Board') {
