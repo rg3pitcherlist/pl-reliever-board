@@ -128,6 +128,13 @@ td { padding: 10px 14px; font: 400 14px 'Work Sans', sans-serif; color: var(--te
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.zero, .zero { color: var(--text-zero); }
 .player-cell { min-width: 168px; }
+/* Leading rank number on the score-ranked boards */
+td.rank-cell {
+  width: 54px; padding-right: 6px;
+  font: 600 15px 'Work Sans', sans-serif; color: var(--amber-muted);
+  font-variant-numeric: tabular-nums;
+}
+th.num.sortable[data-col="rank"] { width: 54px; }
 .player-name {
   font: 600 16px/1 'Work Sans', sans-serif; color: var(--text-player);
   margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px;
@@ -316,10 +323,10 @@ const STREAMER_CAT_URL = 'https://pitcherlist.com/category/fantasy/relief-pitche
 const STREAMER_API     = 'https://pitcherlist.com/wp-json/wp/v2/posts?categories=1369&per_page=10&_fields=title,link,date,content';
 
 const TABS = [
-  { label: 'Leaderboard',           sheet: 'RP Leaderboard',       type: 'statboard', plPages: true },
-  { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard', plPages: true },
-  { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true },
-  { label: 'Combined Rank',         sheet: 'Combined Ranks',       type: 'statboard', plPages: true },
+  { label: 'Leaderboard',           sheet: 'RP Leaderboard',       type: 'statboard', plPages: true, showRank: true },
+  { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard', plPages: true, showRank: true },
+  { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true, showRank: true },
+  { label: 'Combined Rank',         sheet: 'Combined Ranks',       type: 'statboard', plPages: true, showRank: true },
   { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
   { label: 'Closer Ranks',          sheet: 'Closer Rank Trends',   type: 'ranktrends',
     ranksSheet: 'Save Only Ranks',  statHeader: 'SV',         statLabel: 'SV',
@@ -466,12 +473,21 @@ function renderStatboard(rows, tabIdx) {
   const cols = [];           // displayed columns: [2..end of header], minus SP
   for (let i = 2; i < header.length; i++) if (i !== spCol) cols.push(i);
 
+  // Rank = position in the sheet's own order (already sorted best-first by
+  // RP Score / Usage / Combined Score). Captured BEFORE any re-sort so the
+  // number travels with the player: sort by K% and you can still see that the
+  // K% leader is, say, the #37 arm overall.
+  const showRank = !!(TABS[tabIdx] && TABS[tabIdx].showRank);
+  const rankOf = new Map();
+  data.forEach((r, i) => rankOf.set(r, i + 1));
+
   const st = sortState[tabIdx];
   if (st) {
     data = data.slice().sort((a, b) => {
       if (st.col === 'player') {
         return st.dir * String(a[0]).localeCompare(String(b[0]));
       }
+      if (st.col === 'rank') return st.dir * (rankOf.get(a) - rankOf.get(b));
       const av = numVal(a[st.col]), bv = numVal(b[st.col]);
       if (isNaN(av) && isNaN(bv)) return 0;
       if (isNaN(av)) return 1;
@@ -492,13 +508,16 @@ function renderStatboard(rows, tabIdx) {
          '<span>Hide true SPs (' + flaggedTotal + ')</span></label></div>';
   }
   h += '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
+  if (showRank) h += sortableTh('#', 'rank', tabIdx, true);
   h += sortableTh('Player', 'player', tabIdx, false);
   for (const i of cols) h += sortableTh(header[i], i, tabIdx, true);
   h += '</tr></thead><tbody>';
   const plLink = !!(TABS[tabIdx] && TABS[tabIdx].plPages);
   for (const r of data) {
     const fl = isFlagged(r);
-    h += '<tr class="data-row' + (fl ? ' sp-flagged' : '') + '">' + playerCell(r[0], r[1], fl, false, plLink);
+    h += '<tr class="data-row' + (fl ? ' sp-flagged' : '') + '">' +
+         (showRank ? '<td class="num rank-cell">' + rankOf.get(r) + '</td>' : '') +
+         playerCell(r[0], r[1], fl, false, plLink);
     for (const i of cols) h += '<td class="num">' + cellHtml(r[i]) + '</td>';
     h += '</tr>';
   }
