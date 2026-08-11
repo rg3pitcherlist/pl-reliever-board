@@ -375,6 +375,11 @@ const TABS = [
   { label: 'Injured List',          sheet: null, type: 'il' },
 ];
 
+/* Display-only column renames. The sheet keeps the long names (the Score
+   Weights tab matches stats by name, so renaming there would break scoring) —
+   this just shortens the header on screen. */
+const HEADER_ALIAS = { 'ZCon-OSw%': 'Zc-Os%' };
+
 /* Publish dates for each ranking period (footer + graph x-axis). */
 const RANK_DATES = {
   closer: { fall: '10/17/25', winter: '2/10/26', spring: '3/26/26', summer: '6/30/26', final: '9/28/26' },
@@ -548,7 +553,7 @@ function renderStatboard(rows, tabIdx) {
        (showRank ? ' class="has-rank"' : '') + '><thead><tr>';
   if (showRank) h += sortableTh('#', 'rank', tabIdx, true);
   h += sortableTh('Player', 'player', tabIdx, false);
-  for (const i of cols) h += sortableTh(header[i], i, tabIdx, true);
+  for (const i of cols) h += sortableTh(HEADER_ALIAS[header[i]] || header[i], i, tabIdx, true);
   h += '</tr></thead><tbody>';
   const plLink = !!(TABS[tabIdx] && TABS[tabIdx].plPages);
   for (const r of data) {
@@ -568,6 +573,10 @@ function renderStatboard(rows, tabIdx) {
   }
   h += footNotes(extraNotes);
   let metaNote = notes.find(n => /^Last updated/i.test(n)) || '';
+  // Keep the legend's stat name matching the shortened column header
+  Object.keys(HEADER_ALIAS).forEach(k => {
+    metaNote = metaNote.split(k).join(HEADER_ALIAS[k]);
+  });
 
   /* Past Month Board: 50-pitch PLV minimum + friendlier rolling-window label. */
   if (sheetName === 'Past Month Board') {
