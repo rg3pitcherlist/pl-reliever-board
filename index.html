@@ -144,6 +144,31 @@ td.rank-cell {
   font-variant-numeric: tabular-nums;
 }
 th.num.sortable[data-col="rank"] { width: 54px; }
+
+/* ── Frozen first columns (# and Player) ───────────────────
+   Same idea as the frozen header row, on the horizontal axis. --rank-w is
+   measured after render so the Player column always lands flush against the
+   rank column, whatever width it takes. */
+td.rank-cell, td.player-cell { position: sticky; left: 0; z-index: 2; }
+table.has-rank td.player-cell { left: var(--rank-w, 54px); }
+th[data-col="rank"], th[data-col="player"] { left: 0; z-index: 5; }
+table.has-rank th[data-col="player"] { left: var(--rank-w, 54px); }
+
+/* Frozen cells need opaque fills or the stat columns show through them.
+   These match the zebra rows once composited over the page background. */
+tbody tr:nth-child(odd)  td.rank-cell,
+tbody tr:nth-child(odd)  td.player-cell { background: #252b47; }
+tbody tr:nth-child(even) td.rank-cell,
+tbody tr:nth-child(even) td.player-cell { background: #21263e; }
+tbody tr.sp-flagged td.rank-cell,
+tbody tr.sp-flagged td.player-cell { background: #38384b !important; }
+
+/* Divider marking the edge of the frozen pane */
+td.player-cell { box-shadow: 1px 0 0 var(--border-table); }
+th[data-col="player"] {
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08),
+              0 1px 0 var(--border-thead), 1px 0 0 var(--border-table);
+}
 .player-name {
   font: 600 16px/1 'Work Sans', sans-serif; color: var(--text-player);
   margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px;
@@ -516,7 +541,8 @@ function renderStatboard(rows, tabIdx) {
          '<input type="checkbox" id="spToggle"' + (hideTrueSP ? ' checked' : '') + '>' +
          '<span>Hide true SPs (' + flaggedTotal + ')</span></label></div>';
   }
-  h += '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
+  h += '<div class="table-wrap"><div class="table-scroll"><table' +
+       (showRank ? ' class="has-rank"' : '') + '><thead><tr>';
   if (showRank) h += sortableTh('#', 'rank', tabIdx, true);
   h += sortableTh('Player', 'player', tabIdx, false);
   for (const i of cols) h += sortableTh(header[i], i, tabIdx, true);
@@ -1230,6 +1256,16 @@ function buildCombinedRows(rows, rankRows, svhldTotals) {
   return out;
 }
 
+/* Pin the Player column exactly against the rank column by measuring the
+   rank column's rendered width (it varies with 1-, 2- or 3-digit ranks). */
+function syncFrozenColumns() {
+  const tbl = $content.querySelector('table.has-rank');
+  if (!tbl) return;
+  const cell = tbl.querySelector('td.rank-cell') || tbl.querySelector('th[data-col="rank"]');
+  if (cell) tbl.style.setProperty('--rank-w', Math.round(cell.getBoundingClientRect().width) + 'px');
+}
+window.addEventListener('resize', syncFrozenColumns);
+
 function tabReady(tab) {
   const have = (s, id) => ((id || SHEET_ID) + '::' + (s || '')) in cache;
   if (tab.type === 'transactions') return !!txCache;
@@ -1283,6 +1319,7 @@ async function show(i) {
       html = tab.type === 'depth' ? renderDepth(rows) : renderStatboard(rows, i);
     }
     $content.innerHTML = html;
+    syncFrozenColumns();
   } catch (err) {
     if (i !== active) return;
     $content.innerHTML = '<div class="state-msg">Couldn’t reach the live data for this tab. Check your connection and reload.</div>';
