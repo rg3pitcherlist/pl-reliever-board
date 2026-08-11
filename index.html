@@ -107,15 +107,24 @@ body {
   content: ''; position: absolute; inset: 0; border-radius: 10px; pointer-events: none;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), inset 0 1px 0 rgba(255,255,255,0.08);
 }
-.table-scroll { overflow-x: auto; }
+/* The table scrolls inside this box (both axes) rather than with the page.
+   That's what lets the sticky header actually stick: a sticky <th> anchors to
+   its nearest scrolling ancestor, so the ancestor needs a bounded height. */
+.table-scroll {
+  overflow: auto;
+  max-height: max(340px, calc(100vh - 250px));
+  overscroll-behavior: contain;
+}
 table { width: 100%; border-collapse: collapse; }
 th {
   background: #2E3658;
   font: 600 12px 'Work Sans', sans-serif; color: var(--cyan-header);
   height: 34.5px; padding: 0 14px;
   border-bottom: 1px solid var(--border-thead);
-  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
-  text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 2;
+  /* solid bottom rule travels with the sticky header as rows pass under it */
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08),
+              0 1px 0 var(--border-thead);
+  text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 3;
 }
 th.num { text-align: right; }
 th.sortable { cursor: pointer; }
