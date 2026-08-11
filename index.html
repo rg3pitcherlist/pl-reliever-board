@@ -114,6 +114,10 @@ body {
   overflow: auto;
   max-height: max(340px, calc(100vh - 250px));
   overscroll-behavior: contain;
+  /* Opaque backdrop: the zebra rows are semi-transparent, so a flat colour
+     behind them makes the frozen columns' solid fills composite to exactly
+     the same shade instead of drifting against the page gradient. */
+  background: #1b1e30;
 }
 table { width: 100%; border-collapse: collapse; }
 th {
@@ -160,8 +164,10 @@ tbody tr:nth-child(odd)  td.rank-cell,
 tbody tr:nth-child(odd)  td.player-cell { background: #252b47; }
 tbody tr:nth-child(even) td.rank-cell,
 tbody tr:nth-child(even) td.player-cell { background: #21263e; }
+/* flagged rows replace the zebra fill, so this is the amber tint over the
+   backdrop — not over a zebra row */
 tbody tr.sp-flagged td.rank-cell,
-tbody tr.sp-flagged td.player-cell { background: #38384b !important; }
+tbody tr.sp-flagged td.player-cell { background: #2e2c36 !important; }
 
 /* Divider marking the edge of the frozen pane */
 td.player-cell { box-shadow: 1px 0 0 var(--border-table); }
