@@ -254,11 +254,8 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .chip.unstable  { color: var(--red);    border-color: rgba(244,112,124,0.45); background: rgba(244,112,124,0.09); }
 .chip.committee { color: var(--violet); border-color: rgba(167,139,250,0.45); background: rgba(167,139,250,0.09); }
 .chip.interim   { color: var(--gold);   border-color: rgba(245,185,80,0.45);  background: rgba(245,185,80,0.09); }
-.card.stable    { border-top: 2px solid rgba(52,211,153,0.55); }
-.card.cautious  { border-top: 2px solid rgba(255,194,119,0.55); }
-.card.unstable  { border-top: 2px solid rgba(244,112,124,0.55); }
-.card.committee { border-top: 2px solid rgba(167,139,250,0.55); }
-.card.interim   { border-top: 2px solid rgba(245,185,80,0.55); }
+/* No coloured top border on the cards — the status chip already carries
+   the colour, so the stripe was redundant. */
 
 /* ── Player-page links (RP Leaderboard / Past Month Board) ── */
 .pl-name-link { cursor: pointer; }
