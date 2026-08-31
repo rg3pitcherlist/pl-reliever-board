@@ -366,7 +366,10 @@ const TABS = [
   // fallback shown until the sheet loads and reports its "Board:" name.
   { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard', plPages: true, showRank: true,
     dynamicLabel: true },
-  { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true, showRank: true },
+  // Also rotates: "SV+HLD Trends" in season, "2nd Half Trends" once the
+  // season ends, back on Opening Day. Sheet name is fixed either way.
+  { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true, showRank: true,
+    dynamicLabel: true },
   { label: 'Combined Rank',         sheet: 'Combined Ranks',       type: 'statboard', plPages: true, showRank: true },
   { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
   { label: 'Closer Ranks',          sheet: 'Closer Rank Trends',   type: 'ranktrends',
@@ -1270,7 +1273,7 @@ async function loadSvHldTotals() {
 
 /* Combined Ranks: rebuild the display columns in this order —
    Save Only Rank · SV+HLD Rank · SV+HLD's (season Saves+Holds, MLB) ·
-   Usage Rank · Past 30 Rank · Overall Rank · Combined Rank.
+   Usage Score · Recent Score · Overall Score · Combined Score.
    Save Only Rank comes live from the "Save Only Ranks" tab. All of it is
    display-only — the sheet and its Combined Rank formula are untouched. */
 function buildCombinedRows(rows, rankRows, svhldTotals) {
@@ -1291,14 +1294,14 @@ function buildCombinedRows(rows, rankRows, svhldTotals) {
     return -1;
   };
   const iUsage = ix(['Usage Score', 'Usage Rank']),
-        iP30   = ix(['Past 30 Score', 'Past 30 Rank']),
+        iP30   = ix(['Recent Score', 'Past 30 Score', 'Past 30 Rank']),
         iOv    = ix(['Overall Score', 'Overall Rank']),
         iSVR   = ix(['SV+HLD Rank']),
         iComb  = ix(['Combined Score', 'Combined Rank']),
         iSP    = ix(['SP']);
   const lbl = i => (i === -1 ? '' : H[i]);
   const out = [['Name', 'Team', 'Save Only Rank', 'SV+HLD Rank', 'SV+HLD’s',
-                lbl(iUsage) || 'Usage Score', lbl(iP30) || 'Past 30 Score',
+                lbl(iUsage) || 'Usage Score', lbl(iP30) || 'Recent Score',
                 lbl(iOv) || 'Overall Score', lbl(iComb) || 'Combined Score', 'SP']];
   rows.slice(1).forEach(r => {
     if (isNoteRow(r) || (r[0] || '').trim() === '') { out.push(r); return; }
