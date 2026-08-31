@@ -361,7 +361,11 @@ const STREAMER_API     = 'https://pitcherlist.com/wp-json/wp/v2/posts?categories
 
 const TABS = [
   { label: 'Leaderboard',           sheet: 'RP Leaderboard',       type: 'statboard', plPages: true, showRank: true },
-  { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard', plPages: true, showRank: true },
+  // dynamicLabel: this tab's name rotates with the season (Past Month Board →
+  // Second Half Board → "<year> Leaderboards"). The label below is only the
+  // fallback shown until the sheet loads and reports its "Board:" name.
+  { label: 'Past Month Board',      sheet: 'Past Month Board',     type: 'statboard', plPages: true, showRank: true,
+    dynamicLabel: true },
   { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true, showRank: true },
   { label: 'Combined Rank',         sheet: 'Combined Ranks',       type: 'statboard', plPages: true, showRank: true },
   { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
@@ -496,7 +500,36 @@ function setMeta(note) {
 }
 function isNoteRow(r) {
   const c = (r[0] || '').trim();
-  return /^Last updated/i.test(c) || /^pCRA \(/i.test(c) || /^CL = Closer/i.test(c) || /^Orange row/i.test(c);
+  return /^Board:/i.test(c) || /^Last updated/i.test(c) || /^pCRA \(/i.test(c) ||
+         /^CL = Closer/i.test(c) || /^Orange row/i.test(c);
+}
+
+/* ── Rotating second board ─────────────────────────────────
+   One sheet tab ("Past Month Board") holds three different boards over the
+   course of a year — rolling 30 days in season, the second half once the
+   season ends, and last year's full leaderboard each April. The sheet name
+   never changes so this board can always find it; the Apps Script publishes
+   the CURRENT display name in the footer as "Board: <name>".
+   ─────────────────────────────────────────────────────────── */
+const BOARD_LABEL_RE = /^Board:\s*([^|]+?)\s*(?:\||$)/i;
+
+function boardLabelFrom(rows) {
+  for (const r of (rows || [])) {
+    const m = BOARD_LABEL_RE.exec(String((r && r[0]) || '').trim());
+    if (m) return m[1].trim();
+  }
+  return '';
+}
+
+/* Relabel a dynamic tab from its sheet contents. Returns true if it changed. */
+function applyBoardLabel(rows, i) {
+  const t = TABS[i];
+  if (!t || !t.dynamicLabel) return false;
+  const lbl = boardLabelFrom(rows);
+  if (!lbl || lbl === t.label) return false;
+  t.label = lbl;
+  renderTabs();
+  return true;
 }
 
 /* ── Renderers ─────────────────────────────────────────── */
@@ -566,20 +599,30 @@ function renderStatboard(rows, tabIdx) {
   }
   h += '</tbody></table></div></div>';
   const sheetName = TABS[tabIdx] && TABS[tabIdx].sheet;
-  const extraNotes = notes.filter(n => !/^Last updated/i.test(n));
+  applyBoardLabel(rows, tabIdx);
+  const extraNotes = notes.filter(n => !/^Last updated/i.test(n) && !/^Board:/i.test(n));
   if (sheetName === 'SV+HLD Trends') {
     extraNotes.push('Stay up to date with the latest save and hold getters: ' +
       'https://x.com/PitcherListSVs  |  https://bsky.app/profile/pitcherlistsaves.pitcherlist.com');
   }
   h += footNotes(extraNotes);
-  let metaNote = notes.find(n => /^Last updated/i.test(n)) || '';
+  let metaNote = notes.find(n => /^Last updated/i.test(n) || /^Board:/i.test(n)) || '';
+  // The "Board: <name>" token is plumbing for the tab label, not a legend
+  // entry — the tab already says it, so drop it from the visible meta line.
+  const phaseLabel = boardLabelFrom(rows);
+  // BOARD_LABEL_RE swallows the trailing "|" separator too, so strip any
+  // leftover leading pipes/space rather than expecting one.
+  metaNote = metaNote.replace(BOARD_LABEL_RE, '').replace(/^[\s|]+/, '');
   // Keep the legend's stat name matching the shortened column header
   Object.keys(HEADER_ALIAS).forEach(k => {
     metaNote = metaNote.split(k).join(HEADER_ALIAS[k]);
   });
 
-  /* Past Month Board: 50-pitch PLV minimum + friendlier rolling-window label. */
-  if (sheetName === 'Past Month Board') {
+  /* Rolling-30-day phase only: 50-pitch PLV minimum + friendlier window label.
+     In the Second Half / prior-season phases the literal date range is the
+     useful thing to show, so leave it alone. */
+  if (sheetName === 'Past Month Board' &&
+      (!phaseLabel || /past month/i.test(phaseLabel))) {
     metaNote = metaNote.replace(/min 100 pitches/i, 'min 50 pitches');
     metaNote = metaNote.replace(/Window:[^|]*/i, 'Window: Past 30 Days  ');
   }
@@ -1341,7 +1384,9 @@ async function show(i) {
 
 function warmCaches() {
   TABS.forEach((t, i) => {
-    if (i !== active && t.sheet) loadSheet(t.sheet).catch(() => {});
+    if (i !== active && t.sheet) {
+      loadSheet(t.sheet).then(rows => applyBoardLabel(rows, i)).catch(() => {});
+    }
     if (t.ranksSheet) loadSheet(t.ranksSheet).catch(() => {});
   });
   loadInjuredList().catch(() => {});
