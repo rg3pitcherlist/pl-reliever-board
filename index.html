@@ -257,6 +257,42 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 /* No coloured top border on the cards — the status chip already carries
    the colour, so the stripe was redundant. */
 
+/* ── Offseason: Closer Outlook cards + contract badges ──── */
+/* Full-width team cards: 13 stat columns won't fit the 5-across depth-chart
+   grid, so each team gets its own row and keeps every column. */
+.outlook-wrap { display: flex; flex-direction: column; gap: 14px; margin-bottom: 26px; }
+.outlook-card { padding: 12px 12px 6px; }
+.outlook-card .bp-team { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.outlook-count {
+  font: 500 11px 'DM Sans', sans-serif; color: var(--text-zero); letter-spacing: 0.04em;
+}
+.outlook-table { width: 100%; border-collapse: collapse; }
+.outlook-table th {
+  font: 600 10px 'DM Sans', sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-nav); text-align: left; padding: 4px 8px 6px; white-space: nowrap;
+  border-bottom: 1px solid var(--border-table);
+}
+.outlook-table td {
+  font: 400 12.5px 'Work Sans', sans-serif; color: var(--text-player);
+  padding: 4px 8px; white-space: nowrap;
+}
+.outlook-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.outlook-table tbody tr:nth-child(odd) td { background: rgba(255,255,255,0.022); }
+
+.ct-badge {
+  display: inline-block; font: 600 10.5px 'DM Sans', sans-serif;
+  border-radius: 6px; padding: 2px 7px; white-space: nowrap;
+  border: 1px solid var(--border-tab); background: var(--surface-3); color: var(--text-nav);
+}
+.ct-badge.ct-fa { color: var(--green);  border-color: rgba(52,211,153,0.45);  background: rgba(52,211,153,0.10); }
+.ct-badge.ct-po { color: var(--violet); border-color: rgba(167,139,250,0.45); background: rgba(167,139,250,0.10); }
+.ct-badge.ct-to { color: var(--amber);  border-color: rgba(255,194,119,0.45); background: rgba(255,194,119,0.10); }
+.ct-badge.ct-mv { color: var(--cyan);   border-color: rgba(103,232,249,0.42); background: rgba(103,232,249,0.10); }
+.ct-legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px;
+}
+.ct-none { font: 400 12px 'Work Sans', sans-serif; color: var(--text-zero); }
+
 /* ── Player-page links (RP Leaderboard / Past Month Board) ── */
 .pl-name-link { cursor: pointer; }
 .pl-name-link:hover { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px; }
@@ -371,14 +407,15 @@ const TABS = [
   { label: 'SV+HLD Trends',         sheet: 'SV+HLD Trends',        type: 'statboard', plPages: true, showRank: true,
     dynamicLabel: true },
   { label: 'Combined Rank',         sheet: 'Combined Ranks',       type: 'statboard', plPages: true, showRank: true },
-  { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth'     },
+  // phaseKey: swaps to an offseason board between season's end and Opening Day
+  { label: 'Bullpen Depth Charts',  sheet: 'Bullpen Depth Charts', type: 'depth', phaseKey: 'depth' },
   { label: 'Closer Ranks',          sheet: 'Closer Rank Trends',   type: 'ranktrends',
     ranksSheet: 'Save Only Ranks',  statHeader: 'SV',         statLabel: 'SV',
     finalHeader: 'Final Y! Rank',   graph: 'closer' },
   { label: 'SV+HLD Ranks',          sheet: 'SV+HLD Rank Trends',   type: 'ranktrends',
     ranksSheet: 'SV+HLD Ranks',     statHeader: 'Save+Holds', statLabel: 'SV+HLD',
     finalHeader: 'Final Fantrax Rk.', graph: 'svhld' },
-  { label: 'Transactions',          sheet: null, type: 'transactions' },
+  { label: 'Transactions',          sheet: null, type: 'transactions', phaseKey: 'transactions' },
   { label: 'Injured List',          sheet: null, type: 'il' },
 ];
 
@@ -529,10 +566,78 @@ function applyBoardLabel(rows, i) {
   const t = TABS[i];
   if (!t || !t.dynamicLabel) return false;
   const lbl = boardLabelFrom(rows);
-  if (!lbl || lbl === t.label) return false;
+  if (!lbl) return false;
+  // The second board's name also tells us which side of the season we're on:
+  // it only reads "Second Half Board" between the last regular-season game and
+  // Opening Day. That's the same window the offseason tabs use, so we don't
+  // need a second date rule — one source of truth for the whole dashboard.
+  if (t.sheet === 'Past Month Board') setOffseason(/second half/i.test(lbl));
+  if (lbl === t.label) return false;
   t.label = lbl;
   renderTabs();
   return true;
+}
+
+/* ── Offseason tab swap ────────────────────────────────────
+   Between the last regular-season game and Opening Day, two tabs hand over:
+     Bullpen Depth Charts → "<next year> Closer Outlook"
+     Transactions         → "Free Agents"
+   Both live in a separate, hand-maintained spreadsheet. On Opening Day they
+   revert. The sheet tab for the outlook is named by year, so next offseason
+   just add a "2028 Closer Outlook" tab and it's picked up automatically.
+   ─────────────────────────────────────────────────────────── */
+const OFFSEASON_DOC = '1sRVJ0sl-uHadt1fW4Jx2hFAmEWZslWuhb0m57ozQEyA';
+let isOffseason = false;
+
+/* The season the outlook looks ahead to. The offseason only ever spans late
+   September → Opening Day, so from July on we're pointing at next year. */
+function upcomingSeasonYear() {
+  const d = new Date();
+  return d.getMonth() >= 6 ? d.getFullYear() + 1 : d.getFullYear();
+}
+
+const PHASE_TABS = {
+  depth: {
+    off: () => ({ label: upcomingSeasonYear() + ' Closer Outlook',
+                  sheet: upcomingSeasonYear() + ' Closer Outlook',
+                  type: 'outlook', docId: OFFSEASON_DOC }),
+    on:  () => ({ label: 'Bullpen Depth Charts', sheet: 'Bullpen Depth Charts',
+                  type: 'depth', docId: null }),
+  },
+  transactions: {
+    off: () => ({ label: 'Free Agents', sheet: 'Free Agents',
+                  type: 'freeagents', docId: OFFSEASON_DOC }),
+    on:  () => ({ label: 'Transactions', sheet: null,
+                  type: 'transactions', docId: null }),
+  },
+};
+
+function setOffseason(on) {
+  if (on === isOffseason) return;
+  isOffseason = on;
+  TABS.forEach((t, i) => {
+    const spec = t.phaseKey && PHASE_TABS[t.phaseKey];
+    if (!spec) return;
+    Object.assign(t, on ? spec.off() : spec.on());
+  });
+  renderTabs();
+  // The visible tab may have just changed identity — redraw it.
+  show(active);
+  warmCaches();
+}
+
+/* Contract-status highlight, matching the legend on the outlook sheet.
+   Values arrive as "$8M Mutual Option", "$13M Club Option", "Free Agent",
+   "ARB 2", "Pre-ARB", "Signed thru 2028 ($16M)" — anything under contract or
+   in arb gets no highlight. */
+function contractClass(s) {
+  const t = String(s == null ? '' : s);
+  if (!t.trim()) return '';
+  if (/free agent/i.test(t))                  return 'ct-fa';
+  if (/player option/i.test(t))               return 'ct-po';
+  if (/club option|team option/i.test(t))     return 'ct-to';
+  if (/mutual|vesting/i.test(t))              return 'ct-mv';
+  return '';
 }
 
 /* ── Renderers ─────────────────────────────────────────── */
@@ -1114,6 +1219,155 @@ function renderILTab(il) {
   return h;
 }
 
+/* Rows that only label a section ("MUTUAL/VESTING OPTION  (7)") or footer the
+   sheet ("Auto-generated from…"). Both carry text in column A and nothing in B. */
+function isFaSectionRow(r) {
+  const a = String(r[0] == null ? '' : r[0]).trim();
+  const b = String(r[1] == null ? '' : r[1]).trim();
+  return !!a && !b;
+}
+
+/* ── Free Agents (offseason) ───────────────────────────────
+   One flat sortable table. The sheet groups players into contract sections,
+   but the status column already carries that, so the section header rows are
+   dropped — otherwise they'd scatter through the table on the first sort.
+   Sortable on every column except the last two (status + notes).
+   ─────────────────────────────────────────────────────────── */
+function renderFreeAgents(rows, tabIdx) {
+  const header = rows[0].map(h => String(h == null ? '' : h).trim());
+  const notes  = [];
+  let data = rows.slice(1).filter(r => {
+    if (!String(r[0] == null ? '' : r[0]).trim()) return false;
+    if (isFaSectionRow(r)) {
+      const t = String(r[0]).trim();
+      if (/auto-generated|last rebuilt/i.test(t)) notes.push(t);
+      return false;                       // section label or footer — not a player
+    }
+    return true;
+  });
+
+  const NOSORT = 2;                        // status + notes stay put
+  const last   = header.length - 1;
+  const statusCol = last - 1, notesCol = last;
+
+  const st = sortState[tabIdx];
+  if (st) {
+    data = data.slice().sort((a, b) => {
+      const av = numVal(a[st.col]), bv = numVal(b[st.col]);
+      if (!isNaN(av) || !isNaN(bv)) {      // numeric column
+        if (isNaN(av)) return 1;
+        if (isNaN(bv)) return -1;
+        return st.dir * (av - bv);
+      }
+      return st.dir * String(a[st.col] || '').localeCompare(String(b[st.col] || ''));
+    });
+  }
+
+  let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
+  header.forEach((label, i) => {
+    // Column A's header doubles as a section title in the sheet ("TEAM FREE
+    // AGENT  (51)") — show just "TEAM".
+    const disp = i === 0 ? 'TEAM' : label;
+    h += (i <= last - NOSORT)
+      ? sortableTh(disp, i, tabIdx, i >= 4)
+      : '<th>' + esc(disp) + '</th>';
+  });
+  h += '</tr></thead><tbody>';
+  for (const r of data) {
+    h += '<tr class="data-row">';
+    header.forEach((_, i) => {
+      const v = r[i] == null ? '' : r[i];
+      if (i === 1) {
+        h += '<td><span class="pl-name-link" data-plname="' + esc(String(v)) +
+             '" title="Open Pitcher List player page">' + esc(String(v)) + '</span></td>';
+      } else if (i === statusCol) {
+        const c = contractClass(v);
+        h += '<td>' + (String(v).trim()
+              ? '<span class="ct-badge ' + c + '">' + esc(String(v)) + '</span>' : '') + '</td>';
+      } else {
+        h += '<td class="' + (i >= 4 && i !== notesCol ? 'num' : '') + '">' + cellHtml(v) + '</td>';
+      }
+    });
+    h += '</tr>';
+  }
+  h += '</tbody></table></div></div>';
+  h += contractLegendHtml();
+  h += footNotes(notes.concat([data.length + ' free agent(s) listed']));
+  setMeta('Sortable on every column through ' + (header[last - NOSORT] || '') +
+          ' · Contract status and notes are fixed');
+  return h;
+}
+
+/* ── Closer Outlook (offseason) ────────────────────────────
+   Replaces the depth charts, so it keeps the team-card shape. The sheet is a
+   flat 368-row table, so rows are grouped by the TEAM column; each team gets
+   a full-width card (14 columns don't fit a 5-across grid).
+   ─────────────────────────────────────────────────────────── */
+function renderCloserOutlook(rows) {
+  const header = rows[0].map(h => String(h == null ? '' : h).trim());
+  const cols   = header.length;
+  const notes  = [];
+
+  // Group consecutive rows by team; ignore the legend block off to the right.
+  const teams = [];
+  const byTeam = new Map();
+  rows.slice(1).forEach(r => {
+    const team = String(r[0] == null ? '' : r[0]).trim();
+    const player = String(r[1] == null ? '' : r[1]).trim();
+    if (!team) return;
+    if (!player) {
+      if (/auto-generated|last rebuilt/i.test(team)) notes.push(team);
+      return;
+    }
+    if (!byTeam.has(team)) { byTeam.set(team, []); teams.push(team); }
+    byTeam.get(team).push(r);
+  });
+
+  let h = '<div class="outlook-wrap">';
+  for (const team of teams) {
+    const list = byTeam.get(team);
+    h += '<div class="card outlook-card"><div class="bp-team">' + esc(team) +
+         ' <span class="outlook-count">' + list.length + ' RP</span></div>' +
+         '<div class="table-scroll"><table class="outlook-table"><thead><tr>';
+    for (let i = 1; i < cols; i++) h += '<th>' + esc(header[i]) + '</th>';
+    h += '</tr></thead><tbody>';
+    for (const r of list) {
+      h += '<tr>';
+      for (let i = 1; i < cols; i++) {
+        const v = r[i] == null ? '' : r[i];
+        if (i === 1) {
+          h += '<td><span class="pl-name-link" data-plname="' + esc(String(v)) +
+               '" title="Open Pitcher List player page">' + esc(String(v)) + '</span></td>';
+        } else if (i === 12) {
+          const c = contractClass(v);
+          h += '<td>' + (String(v).trim()
+                ? '<span class="ct-badge ' + c + '">' + esc(String(v)) + '</span>' : '') + '</td>';
+        } else {
+          h += '<td class="' + (i >= 4 && i < 12 ? 'num' : '') + '">' + cellHtml(v) + '</td>';
+        }
+      }
+      h += '</tr>';
+    }
+    h += '</tbody></table></div></div>';
+  }
+  h += '</div>';
+  h += contractLegendHtml();
+  h += footNotes(notes.concat([teams.length + ' team(s) · click a name for their Pitcher List page']));
+  setMeta(header[13] || '2027 Closer Odds');
+  return h;
+}
+
+/* Shared legend for the contract-status highlights. */
+function contractLegendHtml() {
+  return '<div class="ct-legend">' +
+    '<span class="ct-badge ct-fa">Free Agent</span>' +
+    '<span class="ct-badge ct-po">Player Option</span>' +
+    '<span class="ct-badge ct-to">Team Option</span>' +
+    '<span class="ct-badge ct-mv">Mutual/Vesting Option</span>' +
+    '<span class="ct-none">no highlight = under contract / pre-arb / arb</span>' +
+    '</div>';
+}
+
 function renderDepth(rows) {
   const note = rows.find(isNoteRow);
   // The depth-chart note row combines the legend and the "Last updated"
@@ -1329,7 +1583,7 @@ function tabReady(tab) {
   if (tab.type === 'transactions') return !!txCache;
   if (tab.type === 'il')           return have(null, IL_SHEET_ID);
   if (tab.type === 'ranktrends')   return have(tab.sheet) && have(tab.ranksSheet) && have(null, IL_SHEET_ID);
-  return have(tab.sheet);
+  return have(tab.sheet, tab.docId);
 }
 
 async function show(i) {
@@ -1357,7 +1611,7 @@ async function show(i) {
       if (i !== active) return;
       html = renderILTab(il);
     } else {
-      let rows = await loadSheet(tab.sheet);
+      let rows = await loadSheet(tab.sheet, tab.docId);
       if (i !== active) return;          // user moved on
       if (!rows || rows.length < 2) {
         $content.innerHTML = '<div class="state-msg">No data available right now — the board keeps its shape.</div>';
@@ -1374,7 +1628,10 @@ async function show(i) {
           rows = buildCombinedRows(rows, pair[0], pair[1]);
         } catch (e) { /* columns simply omitted if the extras fail */ }
       }
-      html = tab.type === 'depth' ? renderDepth(rows) : renderStatboard(rows, i);
+      html = tab.type === 'depth'      ? renderDepth(rows)
+           : tab.type === 'outlook'    ? renderCloserOutlook(rows)
+           : tab.type === 'freeagents' ? renderFreeAgents(rows, i)
+           : renderStatboard(rows, i);
     }
     $content.innerHTML = html;
     syncFrozenColumns();
@@ -1388,12 +1645,12 @@ async function show(i) {
 function warmCaches() {
   TABS.forEach((t, i) => {
     if (i !== active && t.sheet) {
-      loadSheet(t.sheet).then(rows => applyBoardLabel(rows, i)).catch(() => {});
+      loadSheet(t.sheet, t.docId).then(rows => applyBoardLabel(rows, i)).catch(() => {});
     }
     if (t.ranksSheet) loadSheet(t.ranksSheet).catch(() => {});
   });
   loadInjuredList().catch(() => {});
-  loadTransactions().catch(() => {});
+  if (!isOffseason) loadTransactions().catch(() => {});
 }
 
 renderTabs();
