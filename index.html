@@ -1305,8 +1305,12 @@ function renderFreeAgents(rows, tabIdx) {
    ─────────────────────────────────────────────────────────── */
 function renderCloserOutlook(rows) {
   const header = rows[0].map(h => String(h == null ? '' : h).trim());
-  const cols   = header.length;
-  const notes  = [];
+  // The sheet parks a contract-status legend in columns P+, which gviz hands
+  // back as extra columns. A blank header marks the gap before it — stop there
+  // so the legend doesn't render as two phantom stat columns.
+  const blankAt = header.findIndex(h => !h);
+  const cols    = blankAt > 0 ? blankAt : header.length;
+  const notes   = [];
 
   // Group consecutive rows by team; ignore the legend block off to the right.
   const teams = [];
@@ -1353,7 +1357,8 @@ function renderCloserOutlook(rows) {
   h += '</div>';
   h += contractLegendHtml();
   h += footNotes(notes.concat([teams.length + ' team(s) · click a name for their Pitcher List page']));
-  setMeta(header[13] || '2027 Closer Odds');
+  setMeta('Every bullpen for next season · ' + (header[12] || 'contract status') +
+          ' colour-coded below · ' + (header[13] || 'closer odds') + ' fills in as you set it');
   return h;
 }
 
