@@ -821,11 +821,18 @@ function buildRankTrends(tab, trendRows, rankRows, ilSet) {
     // number means he climbed (a smaller rank number is better) and renders ▲.
     // A blank Δ where the earlier rank exists but the later one doesn't gets
     // an explanation when we have one: SP (moved to rotation) or IL.
+    // "IL" means the season never happened for him. A pitcher who threw an
+    // inning and simply finished outside the ranked pool gets a blank, not an
+    // IL tag — being on the IL today says nothing about how he finished.
+    const threwThisSeason = numVal(v(12)) > 0;   // 12 = IP
     const delta = (raw, earlier, later) => {
       if (raw !== '') return raw;
       const a = numVal(earlier), b = numVal(later);
       if (!isNaN(a) && !isNaN(b)) return String(a - b);
-      if (earlier !== '' && later === '') { if (inRot) return 'SP'; if (onIL) return 'IL'; }
+      if (earlier !== '' && later === '') {
+        if (inRot) return 'SP';
+        if (onIL && !threwThisSeason) return 'IL';
+      }
       return '';
     };
     recs.push({
