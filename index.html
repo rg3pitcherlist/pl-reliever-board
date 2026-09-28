@@ -1317,8 +1317,22 @@ function renderFreeAgents(rows, tabIdx) {
    flat 368-row table, so rows are grouped by the TEAM column; each team gets
    a full-width card (14 columns don't fit a 5-across grid).
    ─────────────────────────────────────────────────────────── */
-function renderCloserOutlook(rows, statRows) {
+function renderCloserOutlook(rows, statRows, plvRows) {
   const header = rows[0].map(h => String(h == null ? '' : h).trim());
+
+  // PLV comes straight from the hand-pasted "PLV Data" tab (Pitcher List's
+  // export, 50-pitch floor), joined by name — re-paste it and this updates.
+  // Same first-sheet-fallback guard as below: trust it only if it really has
+  // Player and PLV headers.
+  const plv = new Map();
+  const ph  = ((plvRows || [])[0] || []).map(x => String(x == null ? '' : x).trim().toUpperCase());
+  const pName = ph.indexOf('PLAYER'), pVal = ph.indexOf('PLV');
+  if (pName === 0 && pVal > 0) {
+    plvRows.slice(1).forEach(r => {
+      const nm = String(r[pName] == null ? '' : r[pName]).trim();
+      if (nm) plv.set(normName(nm), r[pVal]);
+    });
+  }
 
   // SIERA + WPA/LI aren't on the outlook sheet — they come from the "Outlook
   // Stats" tab the Apps Script writes each offseason (every pitcher, no IP
@@ -1329,9 +1343,10 @@ function renderCloserOutlook(rows, statRows) {
   // rows. Only trust it if the headers are actually Name / SIERA / WPA/LI.
   const sh = ((statRows || [])[0] || []).map(x => String(x == null ? '' : x).trim().toUpperCase());
   const statsOk = sh[0] === 'NAME' && sh[1] === 'SIERA' && sh[2] === 'WPA/LI';
+  const hasCsw  = statsOk && sh[3] === 'CSW%';   // older runs wrote 3 columns
   (statsOk ? statRows : []).slice(1).forEach(r => {
     const nm = String(r[0] == null ? '' : r[0]).trim();
-    if (nm) adv.set(normName(nm), { siera: r[1], wpali: r[2] });
+    if (nm) adv.set(normName(nm), { siera: r[1], wpali: r[2], csw: hasCsw ? r[3] : '' });
   });
   // The sheet parks a contract-status legend in columns P+, which gviz hands
   // back as extra columns. A blank header marks the gap before it — stop there
@@ -1373,6 +1388,8 @@ function renderCloserOutlook(rows, statRows) {
     return String((isNaN(a) ? 0 : a) + (isNaN(b) ? 0 : b));
   };
   const stat = (r, k) => { const s = adv.get(normName(String(raw(r, iPlayer)))); return s ? fix2(s[k]) : ''; };
+  // CSW% arrives pre-formatted ("38.3%") — pass it through untouched.
+  const csw  = r => { const s = adv.get(normName(String(raw(r, iPlayer)))); return s ? String(s.csw || '') : ''; };
 
   // ERA / SV / HLD swapped for SIERA / WPA/LI / SV+HLD — the ERA→SIERA and
   // SV,HLD→WPA/LI,SV+HLD swaps keep the same slots the old columns sat in.
@@ -1384,9 +1401,11 @@ function renderCloserOutlook(rows, statRows) {
     { label: 'SIERA',  num: true, get: r => stat(r, 'siera') },
     { label: 'WHIP',   num: true, get: r => raw(r, iWHIP) },
     { label: 'WPA/LI', num: true, get: r => stat(r, 'wpali') },
+    { label: 'PLV',    num: true, get: r => fix2(plv.get(normName(String(raw(r, iPlayer))))) },
     { label: 'SV+HLD', num: true, get: r => svhld(r) },
     { label: header[iSDMD] || 'SD-MD',  num: true, get: r => raw(r, iSDMD) },
     { label: header[iSw]   || 'SwStr%', num: true, get: r => raw(r, iSw)   },
+    { label: 'CSW%',                    num: true, get: r => csw(r)        },
     { label: header[iKBB]  || 'K-BB%',  num: true, get: r => raw(r, iKBB)  },
     { label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
     { label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
@@ -1422,7 +1441,7 @@ function renderCloserOutlook(rows, statRows) {
   h += '</div>';
   h += contractLegendHtml();
   h += footNotes(notes.concat([
-    'SIERA and WPA/LI via FanGraphs (full season, no IP minimum) · SV+HLD = saves + holds',
+    'SIERA, WPA/LI and CSW% via FanGraphs (full season, no IP minimum) · PLV = Pitch Level Value (min 50 pitches) · SV+HLD = saves + holds',
     teams.length + ' team(s) · click a name for their Pitcher List page',
   ]));
   setMeta('Every bullpen for next season · ' + (header[iCt] || 'contract status') +
@@ -1703,7 +1722,8 @@ async function show(i) {
       }
       html = tab.type === 'depth'      ? renderDepth(rows)
            : tab.type === 'outlook'    ? renderCloserOutlook(rows,
-                 await loadSheet('Outlook Stats').catch(() => null))
+                 await loadSheet('Outlook Stats').catch(() => null),
+                 await loadSheet('PLV Data').catch(() => null))
            : tab.type === 'freeagents' ? renderFreeAgents(rows, i)
            : renderStatboard(rows, i);
     }
