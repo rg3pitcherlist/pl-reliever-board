@@ -1317,8 +1317,22 @@ function renderFreeAgents(rows, tabIdx) {
    flat 368-row table, so rows are grouped by the TEAM column; each team gets
    a full-width card (14 columns don't fit a 5-across grid).
    ─────────────────────────────────────────────────────────── */
-function renderCloserOutlook(rows) {
+function renderCloserOutlook(rows, statRows) {
   const header = rows[0].map(h => String(h == null ? '' : h).trim());
+
+  // SIERA + WPA/LI aren't on the outlook sheet — they come from the "Outlook
+  // Stats" tab the Apps Script writes each offseason (every pitcher, no IP
+  // floor), joined by name. Missing tab → those two columns just read "—".
+  const adv = new Map();
+  // gviz quietly serves the FIRST sheet when a tab name doesn't exist, so
+  // until the script has created "Outlook Stats" this would be RP Leaderboard
+  // rows. Only trust it if the headers are actually Name / SIERA / WPA/LI.
+  const sh = ((statRows || [])[0] || []).map(x => String(x == null ? '' : x).trim().toUpperCase());
+  const statsOk = sh[0] === 'NAME' && sh[1] === 'SIERA' && sh[2] === 'WPA/LI';
+  (statsOk ? statRows : []).slice(1).forEach(r => {
+    const nm = String(r[0] == null ? '' : r[0]).trim();
+    if (nm) adv.set(normName(nm), { siera: r[1], wpali: r[2] });
+  });
   // The sheet parks a contract-status legend in columns P+, which gviz hands
   // back as extra columns. A blank header marks the gap before it — stop there
   // so the legend doesn't render as two phantom stat columns.
@@ -1341,27 +1355,64 @@ function renderCloserOutlook(rows) {
     byTeam.get(team).push(r);
   });
 
+  // Columns are located by header name, not position, so a reordered sheet
+  // can't silently shift a stat into the wrong column.
+  const col = re => header.slice(0, cols).findIndex(h => re.test(h));
+  const iPlayer = 1,
+        iThr  = col(/^thr$/i),        iRole = col(/current role/i),
+        iIP   = col(/^ip$/i),         iWHIP = col(/^whip$/i),
+        iSV   = col(/^sv$/i),         iHLD  = col(/^hld$/i),
+        iSDMD = col(/^sd-md$/i),      iSw   = col(/^swstr%$/i),
+        iKBB  = col(/^k-bb%$/i),      iCt   = col(/contract/i),
+        iOdds = col(/closer odds/i);
+  const raw  = (r, i) => (i < 0 || r[i] == null) ? '' : r[i];
+  const fix2 = v => { const n = numVal(v); return isNaN(n) ? '' : n.toFixed(2); };
+  const svhld = r => {
+    const a = numVal(raw(r, iSV)), b = numVal(raw(r, iHLD));
+    if (isNaN(a) && isNaN(b)) return '';
+    return String((isNaN(a) ? 0 : a) + (isNaN(b) ? 0 : b));
+  };
+  const stat = (r, k) => { const s = adv.get(normName(String(raw(r, iPlayer)))); return s ? fix2(s[k]) : ''; };
+
+  // ERA / SV / HLD swapped for SIERA / WPA/LI / SV+HLD — the ERA→SIERA and
+  // SV,HLD→WPA/LI,SV+HLD swaps keep the same slots the old columns sat in.
+  const SPEC = [
+    { label: header[iPlayer] || 'PLAYER', kind: 'player' },
+    { label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
+    { label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole) },
+    { label: 'IP',     num: true, get: r => raw(r, iIP) },
+    { label: 'SIERA',  num: true, get: r => stat(r, 'siera') },
+    { label: 'WHIP',   num: true, get: r => raw(r, iWHIP) },
+    { label: 'WPA/LI', num: true, get: r => stat(r, 'wpali') },
+    { label: 'SV+HLD', num: true, get: r => svhld(r) },
+    { label: header[iSDMD] || 'SD-MD',  num: true, get: r => raw(r, iSDMD) },
+    { label: header[iSw]   || 'SwStr%', num: true, get: r => raw(r, iSw)   },
+    { label: header[iKBB]  || 'K-BB%',  num: true, get: r => raw(r, iKBB)  },
+    { label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
+    { label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
+  ];
+
   let h = '<div class="outlook-wrap">';
   for (const team of teams) {
     const list = byTeam.get(team);
     h += '<div class="card outlook-card"><div class="bp-team">' + esc(team) +
          ' <span class="outlook-count">' + list.length + ' RP</span></div>' +
          '<div class="table-scroll"><table class="outlook-table"><thead><tr>';
-    for (let i = 1; i < cols; i++) h += '<th>' + esc(header[i]) + '</th>';
+    for (const c of SPEC) h += '<th>' + esc(c.label) + '</th>';
     h += '</tr></thead><tbody>';
     for (const r of list) {
       h += '<tr>';
-      for (let i = 1; i < cols; i++) {
-        const v = r[i] == null ? '' : r[i];
-        if (i === 1) {
-          h += '<td><span class="pl-name-link" data-plname="' + esc(String(v)) +
-               '" title="Open Pitcher List player page">' + esc(String(v)) + '</span></td>';
-        } else if (i === 12) {
-          const c = contractClass(v);
+      for (const c of SPEC) {
+        if (c.kind === 'player') {
+          const v = String(raw(r, iPlayer));
+          h += '<td><span class="pl-name-link" data-plname="' + esc(v) +
+               '" title="Open Pitcher List player page">' + esc(v) + '</span></td>';
+        } else if (c.kind === 'contract') {
+          const v = c.get(r);
           h += '<td>' + (String(v).trim()
-                ? '<span class="ct-badge ' + c + '">' + esc(String(v)) + '</span>' : '') + '</td>';
+                ? '<span class="ct-badge ' + contractClass(v) + '">' + esc(String(v)) + '</span>' : '') + '</td>';
         } else {
-          h += '<td class="' + (i >= 4 && i < 12 ? 'num' : '') + '">' + cellHtml(v) + '</td>';
+          h += '<td class="' + (c.num ? 'num' : '') + '">' + cellHtml(c.get(r)) + '</td>';
         }
       }
       h += '</tr>';
@@ -1370,9 +1421,12 @@ function renderCloserOutlook(rows) {
   }
   h += '</div>';
   h += contractLegendHtml();
-  h += footNotes(notes.concat([teams.length + ' team(s) · click a name for their Pitcher List page']));
-  setMeta('Every bullpen for next season · ' + (header[12] || 'contract status') +
-          ' colour-coded below · ' + (header[13] || 'closer odds') + ' fills in as you set it');
+  h += footNotes(notes.concat([
+    'SIERA and WPA/LI via FanGraphs (full season, no IP minimum) · SV+HLD = saves + holds',
+    teams.length + ' team(s) · click a name for their Pitcher List page',
+  ]));
+  setMeta('Every bullpen for next season · ' + (header[iCt] || 'contract status') +
+          ' colour-coded below · ' + (header[iOdds] || 'closer odds') + ' fills in as you set it');
   return h;
 }
 
@@ -1648,7 +1702,8 @@ async function show(i) {
         } catch (e) { /* columns simply omitted if the extras fail */ }
       }
       html = tab.type === 'depth'      ? renderDepth(rows)
-           : tab.type === 'outlook'    ? renderCloserOutlook(rows)
+           : tab.type === 'outlook'    ? renderCloserOutlook(rows,
+                 await loadSheet('Outlook Stats').catch(() => null))
            : tab.type === 'freeagents' ? renderFreeAgents(rows, i)
            : renderStatboard(rows, i);
     }
