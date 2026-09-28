@@ -814,10 +814,17 @@ function buildRankTrends(tab, trendRows, rankRows, ilSet) {
     const onIL = ilSet.has(key);
     const dm   = v(17);
     const inRot = /rotation/i.test(dm);
-    // Blank Δ where the earlier rank exists but the later one doesn't gets
+    // Δ columns come from the sheet when they're filled in. When one is blank
+    // but both ranks exist, compute it here — that's what fills Summer→Final
+    // and Fall→Final the moment the final ranks land, with no backfill.
+    // Sign matches the sheet's own convention: earlier − later, so a positive
+    // number means he climbed (a smaller rank number is better) and renders ▲.
+    // A blank Δ where the earlier rank exists but the later one doesn't gets
     // an explanation when we have one: SP (moved to rotation) or IL.
     const delta = (raw, earlier, later) => {
       if (raw !== '') return raw;
+      const a = numVal(earlier), b = numVal(later);
+      if (!isNaN(a) && !isNaN(b)) return String(a - b);
       if (earlier !== '' && later === '') { if (inRot) return 'SP'; if (onIL) return 'IL'; }
       return '';
     };
