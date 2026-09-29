@@ -1536,10 +1536,10 @@ function renderCloserOutlook(rows, L) {
   // text ellipsizes (full value on hover) instead of the table sliding.
   // Sums to 100.
   const SPEC = [
-    { w: 11,    label: 'PLAYER', kind: 'player', get: nameOf },
+    { w: 11.25, label: 'PLAYER', kind: 'player', get: nameOf },
     { w: 3.5,   label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
-    { w: 8.75,  label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
-  ].concat(stats.map(s => Object.assign({ w: 5.725, num: true }, s))).concat([
+    { w: 9.1,   label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
+  ].concat(stats.map(s => Object.assign({ w: 5.665, num: true }, s))).concat([
     { w: 13,    label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
     { w: 6.5,   label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
   ]);
