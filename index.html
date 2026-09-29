@@ -272,6 +272,9 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .outlook-table { width: 100%; min-width: 1180px; border-collapse: collapse; table-layout: fixed; }
 .outlook-table th, .outlook-table td { overflow: hidden; text-overflow: ellipsis; }
 .outlook-table th.num { text-align: right; }
+/* Headers may wrap to two lines ("2027 CLOSER / ODDS") rather than truncate;
+   data cells stay single-line. */
+.outlook-table th { white-space: normal; vertical-align: bottom; }
 .outlook-table th {
   font: 600 10px 'DM Sans', sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--text-nav); text-align: left; padding: 4px 8px 6px; white-space: nowrap;
@@ -1463,13 +1466,17 @@ function renderCloserOutlook(rows, L) {
 
   // w = column width (% of the card). Every card shares these widths under a
   // fixed table layout, so columns sit in identical positions on all 30 cards.
+  // Sized to the longest real value at the table's 1180px minimum width:
+  // PLAYER fits "Seranthony Domínguez", CURRENT ROLE fits "Closer Committee",
+  // contract fits "$13M Vesting Option (Vested)". Anything longer (the rare
+  // opt-out clause) ellipsizes with the full text on hover. Sums to 100.
   const SPEC = [
-    { w: 10,  label: 'PLAYER', kind: 'player', get: nameOf },
-    { w: 3.5, label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
-    { w: 8.5, label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole) },
-  ].concat(stats.map(s => Object.assign({ w: 5.5, num: true }, s))).concat([
-    { w: 13,  label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
-    { w: 10,  label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
+    { w: 11.75, label: 'PLAYER', kind: 'player', get: nameOf },
+    { w: 3.5,   label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
+    { w: 9.5,   label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole) },
+  ].concat(stats.map(s => Object.assign({ w: 5.3, num: true }, s))).concat([
+    { w: 16.25, label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
+    { w: 6,     label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
   ]);
   const colgroup = '<colgroup>' + SPEC.map(c => '<col style="width:' + c.w + '%">').join('') + '</colgroup>';
 
