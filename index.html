@@ -267,9 +267,17 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
   font: 500 11px 'DM Sans', sans-serif; color: var(--text-zero); letter-spacing: 0.04em;
 }
 /* Fixed layout + a shared <colgroup> keeps every team card's columns in the
-   same positions. min-width stops narrow screens crushing the grid — the
-   card scrolls sideways instead. */
-.outlook-table { width: 100%; min-width: 1180px; border-collapse: collapse; table-layout: fixed; }
+   same positions. No min-width and no scroll wrapper: each team's table
+   fits its card and never slides sideways. */
+.outlook-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.outlook-card { overflow: hidden; }
+/* Team name in club colours (fill = primary, border = secondary). */
+.team-pill {
+  display: inline-block; padding: 3px 12px; border-radius: 8px;
+  border: 2px solid var(--border-tab); background: var(--surface-3);
+  color: #fff; font: 700 14px/1.3 'Work Sans', sans-serif; letter-spacing: 0.01em;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+}
 .outlook-table th, .outlook-table td { overflow: hidden; text-overflow: ellipsis; }
 .outlook-table th.num { text-align: right; }
 /* Headers may wrap to two lines ("2027 CLOSER / ODDS") rather than truncate;
@@ -1253,7 +1261,55 @@ function renderILTab(il) {
                         pitcher isn't in that export, FanGraphs fills in
    ─────────────────────────────────────────────────────────── */
 const STUFF_DOC = '1RePjV5VZV3I-JcwaYFpEfSkSZKI_Fy0KIjsCSn9HIVY';
-const STUFF_MIN_PITCHES = 50;   // same floor as the PLV export
+const STUFF_MIN_PITCHES = 50;
+const PLV_MIN_PITCHES_OFF = 100;   // matches the leaderboards' PLV floor
+
+/* Closer Outlook team headers: full name + club colours (primary fill,
+   secondary border so dark navies still read against the dark cards).
+   Keyed by the outlook sheet's FanGraphs-style codes. */
+const TEAM_INFO = {
+  ARI: ['Arizona Diamondbacks',  '#A71930', '#E3D4AD'],
+  ATH: ['Athletics',             '#003831', '#EFB21E'],
+  ATL: ['Atlanta Braves',        '#CE1141', '#13274F'],
+  BAL: ['Baltimore Orioles',     '#DF4601', '#000000'],
+  BOS: ['Boston Red Sox',        '#BD3039', '#0C2340'],
+  CHC: ['Chicago Cubs',          '#0E3386', '#CC3433'],
+  CHW: ['Chicago White Sox',     '#27251F', '#C4CED4'],
+  CIN: ['Cincinnati Reds',       '#C6011F', '#000000'],
+  CLE: ['Cleveland Guardians',   '#00385D', '#E50022'],
+  COL: ['Colorado Rockies',      '#33006F', '#C4CED4'],
+  DET: ['Detroit Tigers',        '#0C2340', '#FA4616'],
+  HOU: ['Houston Astros',        '#002D62', '#EB6E1F'],
+  KCR: ['Kansas City Royals',    '#004687', '#BD9B60'],
+  LAA: ['Los Angeles Angels',    '#BA0021', '#003263'],
+  LAD: ['Los Angeles Dodgers',   '#005A9C', '#EF3E42'],
+  MIA: ['Miami Marlins',         '#00A3E0', '#EF3340'],
+  MIL: ['Milwaukee Brewers',     '#12284B', '#FFC52F'],
+  MIN: ['Minnesota Twins',       '#002B5C', '#D31145'],
+  NYM: ['New York Mets',         '#002D72', '#FF5910'],
+  NYY: ['New York Yankees',      '#0C2340', '#C4CED4'],
+  PHI: ['Philadelphia Phillies', '#E81828', '#002D72'],
+  PIT: ['Pittsburgh Pirates',    '#27251F', '#FDB827'],
+  SDP: ['San Diego Padres',      '#2F241D', '#FFC425'],
+  SEA: ['Seattle Mariners',      '#0C2C56', '#005C5C'],
+  SFG: ['San Francisco Giants',  '#FD5A1E', '#27251F'],
+  STL: ['St. Louis Cardinals',   '#C41E3A', '#0C2340'],
+  TBR: ['Tampa Bay Rays',        '#092C5C', '#8FBCE6'],
+  TEX: ['Texas Rangers',         '#003278', '#C0111F'],
+  TOR: ['Toronto Blue Jays',     '#134A8E', '#1D2D5C'],
+  WSN: ['Washington Nationals',  '#AB0003', '#14225A'],
+};
+function teamPill(code) {
+  const t = TEAM_INFO[String(code).trim().toUpperCase()];
+  if (!t) return '<span class="team-pill">' + esc(code) + '</span>';   // unknown code: plain
+  return '<span class="team-pill" style="background:' + t[1] + ';border-color:' + t[2] + '">' +
+         esc(t[0]) + '</span>';
+}
+
+/* Header (meta) line shared by both offseason tabs. */
+const OFFSEASON_META_DEFS =
+  'Zc-Os% = Z-Contact% − O-Swing% (lower = better) · PLV = Pitch Level Value (min ' +
+  PLV_MIN_PITCHES_OFF + ' pitches)';
 
 async function loadOffseasonLookups() {
   const [adv, plv, pl, stuff] = await Promise.all([
@@ -1281,8 +1337,14 @@ function offseasonLookups(src) {
   }
   h = hdr(src.plv);
   if (h[0] === 'PLAYER' && h.indexOf('PLV') > 0) {
-    const i = h.indexOf('PLV');
-    src.plv.slice(1).forEach(r => { const k = key(r); if (k) L.plv.set(k, r[i]); });
+    const i = h.indexOf('PLV'), p = h.indexOf('PITCHES');
+    src.plv.slice(1).forEach(r => {
+      const k = key(r); if (!k) return;
+      // The export floors at 50 pitches; the board uses 100, same as the
+      // leaderboards, so the header's "(min 100 pitches)" is literally true.
+      if (p > 0 && !(numVal(r[p]) >= PLV_MIN_PITCHES_OFF)) return;
+      L.plv.set(k, r[i]);
+    });
   }
   h = hdr(src.stuff);
   if (h[0] === 'NAME' && h.indexOf('STUFF+') > 0) {
@@ -1325,11 +1387,11 @@ function offseasonStatSpec(L, sc, nameOf) {
   ];
 }
 
+// Footer. The PLV / Zc-Os% definitions live in the header line instead.
 const OFFSEASON_SOURCE_NOTE =
   'SIERA, WPA/LI, Zc-Os% via FanGraphs (full season, no IP minimum) · ' +
-  'SwStr% and CSW% are Pitcher List’s own numbers (FanGraphs where a pitcher isn’t in that export) · ' +
-  'PLV = Pitch Level Value, Stuff+ = Pitcher List Stuff+ (min 50 pitches each) · ' +
-  'Zc-Os% = Z-Contact% − O-Swing% (lower = better)';
+  'SwStr% and CSW% are Pitcher List’s own numbers (FanGraphs for pitchers below minimum) · ' +
+  'Stuff+ = Pitcher List Stuff+ (min ' + STUFF_MIN_PITCHES + ' pitches)';
 
 /* Rows that only label a section ("MUTUAL/VESTING OPTION  (7)") or footer the
    sheet ("Auto-generated from…"). Both carry text in column A and nothing in B. */
@@ -1421,7 +1483,8 @@ function renderFreeAgents(rows, L, tabIdx) {
   h += '</tbody></table></div></div>';
   h += contractLegendHtml();
   h += footNotes(notes.concat([OFFSEASON_SOURCE_NOTE, data.length + ' free agent(s) listed']));
-  setMeta('Sortable on every column through K-BB% · Contract status and notes are fixed');
+  setMeta('Sortable on every column through K-BB% · Contract status and notes are fixed · ' +
+          OFFSEASON_META_DEFS);
   return h;
 }
 
@@ -1466,26 +1529,25 @@ function renderCloserOutlook(rows, L) {
 
   // w = column width (% of the card). Every card shares these widths under a
   // fixed table layout, so columns sit in identical positions on all 30 cards.
-  // Sized to the longest real value at the table's 1180px minimum width:
-  // PLAYER fits "Seranthony Domínguez", CURRENT ROLE fits "Closer Committee",
-  // contract fits "$13M Vesting Option (Vested)". Anything longer (the rare
-  // opt-out clause) ellipsizes with the full text on hover. Sums to 100.
+  // Column widths (% of the card), shared by every card so columns line up.
+  // The tables don't scroll — they fit the card — so on narrow screens long
+  // text ellipsizes (full value on hover) instead of the table sliding.
+  // Sums to 100.
   const SPEC = [
-    { w: 11.75, label: 'PLAYER', kind: 'player', get: nameOf },
-    { w: 3.5,   label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
-    { w: 9.5,   label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole) },
-  ].concat(stats.map(s => Object.assign({ w: 5.3, num: true }, s))).concat([
-    { w: 16.25, label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
-    { w: 6,     label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
+    { w: 10,   label: 'PLAYER', kind: 'player', get: nameOf },
+    { w: 3.5,  label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
+    { w: 8,    label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
+  ].concat(stats.map(s => Object.assign({ w: 5.95, num: true }, s))).concat([
+    { w: 13,   label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
+    { w: 6,    label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
   ]);
   const colgroup = '<colgroup>' + SPEC.map(c => '<col style="width:' + c.w + '%">').join('') + '</colgroup>';
 
   let h = '<div class="outlook-wrap">';
   for (const team of teams) {
     const list = byTeam.get(team);
-    h += '<div class="card outlook-card"><div class="bp-team">' + esc(team) +
-         ' <span class="outlook-count">' + list.length + ' RP</span></div>' +
-         '<div class="table-scroll"><table class="outlook-table">' + colgroup + '<thead><tr>';
+    h += '<div class="card outlook-card"><div class="bp-team">' + teamPill(team) + '</div>' +
+         '<table class="outlook-table">' + colgroup + '<thead><tr>';
     // Stat headers right-align so they sit over their right-aligned numbers.
     for (const c of SPEC) h += '<th' + (c.num ? ' class="num"' : '') + '>' + esc(c.label) + '</th>';
     h += '</tr></thead><tbody>';
@@ -1500,12 +1562,13 @@ function renderCloserOutlook(rows, L) {
           h += '<td>' + (String(v).trim()
                 ? '<span class="ct-badge ' + contractClass(v) + '" title="' + esc(String(v)) + '">' + esc(String(v)) + '</span>' : '') + '</td>';
         } else {
-          h += '<td class="' + (c.num ? 'num' : '') + '">' + cellHtml(v) + '</td>';
+          h += '<td class="' + (c.num ? 'num' : '') + '"' +
+               (c.tip && String(v).trim() ? ' title="' + esc(String(v)) + '"' : '') + '>' + cellHtml(v) + '</td>';
         }
       }
       h += '</tr>';
     }
-    h += '</tbody></table></div></div>';
+    h += '</tbody></table></div>';
   }
   h += '</div>';
   h += contractLegendHtml();
@@ -1514,7 +1577,7 @@ function renderCloserOutlook(rows, L) {
     teams.length + ' team(s) · click a name for their Pitcher List page',
   ]));
   setMeta('Every bullpen for next season · ' + (header[iCt] || 'contract status') +
-          ' colour-coded below · ' + (header[iOdds] || 'closer odds') + ' fills in as you set it');
+          ' colour-coded below · ' + OFFSEASON_META_DEFS);
   return h;
 }
 
