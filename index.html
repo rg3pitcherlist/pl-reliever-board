@@ -1358,7 +1358,9 @@ function offseasonLookups(src) {
     });
   }
   h = hdr(src.pl);
-  if (h[0] === 'NAME' && h.indexOf('SWSTR%') > 0) {
+  // Exact layout (Name | SwStr% | CSW%). A looser "has a SwStr% column" test
+  // would accept the RP Leaderboard that gviz serves when "PL Stats" is missing.
+  if (h[0] === 'NAME' && h[1] === 'SWSTR%') {
     const iS = h.indexOf('SWSTR%'), iC = h.indexOf('CSW%');
     src.pl.slice(1).forEach(r => { const k = key(r); if (k) L.pl.set(k, { sw: r[iS], csw: iC > 0 ? r[iC] : '' }); });
   }
@@ -1531,6 +1533,10 @@ function renderCloserOutlook(rows, L) {
 
   // w = column width (% of the card). Every card shares these widths under a
   // fixed table layout, so columns sit in identical positions on all 30 cards.
+  // Stat widths are individual: short-valued columns (SD-MD, PLV, SIERA) give
+  // up a little room so "2027 Closer Odds" fits on one line.
+  const STAT_W = { 'IP': 5.4, 'SIERA': 4.9, 'SD-MD': 4.8, 'WPA/LI': 5.6, 'PLV': 4.8,
+                   'Stuff+': 5.3, 'Zc-Os%': 5.9, 'SwStr%': 5.9, 'CSW%': 5.5, 'K-BB%': 5.6 };
   // Column widths (% of the card), shared by every card so columns line up.
   // The tables don't scroll — they fit the card — so on narrow screens long
   // text ellipsizes (full value on hover) instead of the table sliding.
@@ -1539,9 +1545,9 @@ function renderCloserOutlook(rows, L) {
     { w: 11.25, label: 'PLAYER', kind: 'player', get: nameOf },
     { w: 3.5,   label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
     { w: 9.1,   label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
-  ].concat(stats.map(s => Object.assign({ w: 5.665, num: true }, s))).concat([
+  ].concat(stats.map(s => Object.assign({ w: STAT_W[s.label] || 5.5, num: true }, s))).concat([
     { w: 13,    label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
-    { w: 6.5,   label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
+    { w: 9.45,  label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
   ]);
   const colgroup = '<colgroup>' + SPEC.map(c => '<col style="width:' + c.w + '%">').join('') + '</colgroup>';
 
