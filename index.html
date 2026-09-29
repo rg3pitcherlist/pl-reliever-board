@@ -1238,6 +1238,96 @@ function renderILTab(il) {
   return h;
 }
 
+/* ── Offseason stat set (shared by Closer Outlook + Free Agents) ──
+   Both tabs show the same ten stats, defined once here so they can never
+   drift apart. Sources, each joined by player name:
+     IP, SD-MD, K-BB%   the tab's own sheet
+     SIERA, WPA/LI,     "Outlook Stats" — FanGraphs, written by the Apps
+       Zc-Os%           Script each offseason (every pitcher, no IP floor)
+     PLV                "PLV Data" — the hand-pasted Pitcher List export
+     Stuff+             Pitcher List's Stuff+ sheet, "Season" tab, read live
+     SwStr%, CSW%       "PL Stats" — Pitcher List's own numbers; where a
+                        pitcher isn't in that export, FanGraphs fills in
+   ─────────────────────────────────────────────────────────── */
+const STUFF_DOC = '1RePjV5VZV3I-JcwaYFpEfSkSZKI_Fy0KIjsCSn9HIVY';
+const STUFF_MIN_PITCHES = 50;   // same floor as the PLV export
+
+async function loadOffseasonLookups() {
+  const [adv, plv, pl, stuff] = await Promise.all([
+    loadSheet('Outlook Stats').catch(() => null),
+    loadSheet('PLV Data').catch(() => null),
+    loadSheet('PL Stats').catch(() => null),
+    loadSheet('Season', STUFF_DOC).catch(() => null),
+  ]);
+  return offseasonLookups({ adv, plv, pl, stuff });
+}
+
+/* Build name → value maps. gviz quietly serves a doc's FIRST sheet when a
+   tab name doesn't exist, so each source is only trusted if its own header
+   row looks right — otherwise it's skipped and those columns read "—". */
+function offseasonLookups(src) {
+  const hdr = rows => ((rows || [])[0] || []).map(x => String(x == null ? '' : x).trim().toUpperCase());
+  const key = r => normName(String(r[0] == null ? '' : r[0]).trim());
+  const L = { adv: new Map(), plv: new Map(), stuff: new Map(), pl: new Map() };
+
+  let h = hdr(src.adv);
+  if (h[0] === 'NAME' && h[1] === 'SIERA') {
+    const iW = h.indexOf('WPA/LI'), iC = h.indexOf('CSW%'), iZ = h.indexOf('ZC-OS%');
+    src.adv.slice(1).forEach(r => { const k = key(r); if (k) L.adv.set(k, {
+      siera: r[1], wpali: iW > 0 ? r[iW] : '', csw: iC > 0 ? r[iC] : '', zcos: iZ > 0 ? r[iZ] : '' }); });
+  }
+  h = hdr(src.plv);
+  if (h[0] === 'PLAYER' && h.indexOf('PLV') > 0) {
+    const i = h.indexOf('PLV');
+    src.plv.slice(1).forEach(r => { const k = key(r); if (k) L.plv.set(k, r[i]); });
+  }
+  h = hdr(src.stuff);
+  if (h[0] === 'NAME' && h.indexOf('STUFF+') > 0) {
+    const i = h.indexOf('STUFF+'), p = h.indexOf('PITCHES');
+    src.stuff.slice(1).forEach(r => {
+      const k = key(r); if (!k) return;
+      if (p > 0 && !(numVal(r[p]) >= STUFF_MIN_PITCHES)) return;   // too few pitches to trust
+      L.stuff.set(k, r[i]);
+    });
+  }
+  h = hdr(src.pl);
+  if (h[0] === 'NAME' && h.indexOf('SWSTR%') > 0) {
+    const iS = h.indexOf('SWSTR%'), iC = h.indexOf('CSW%');
+    src.pl.slice(1).forEach(r => { const k = key(r); if (k) L.pl.set(k, { sw: r[iS], csw: iC > 0 ? r[iC] : '' }); });
+  }
+  return L;
+}
+
+/* The ten stat columns, in order. `sc` = the tab's own column indices for
+   IP / SD-MD / SwStr% / K-BB%; `nameOf(row)` = the player's name. */
+function offseasonStatSpec(L, sc, nameOf) {
+  const raw  = (r, i) => (i < 0 || r[i] == null) ? '' : r[i];
+  const fix2 = v => { const n = numVal(v); return isNaN(n) ? '' : n.toFixed(2); };
+  const int0 = v => { const n = numVal(v); return isNaN(n) ? '' : String(Math.round(n)); };
+  const txt  = v => String(v == null ? '' : v).trim();
+  const real = v => numVal(v) > 0;      // PL's export uses 0.0% for "no data"
+  const A = r => L.adv.get(normName(nameOf(r))) || {};
+  const P = r => L.pl.get(normName(nameOf(r)));
+  return [
+    { label: 'IP',     get: r => raw(r, sc.ip) },
+    { label: 'SIERA',  get: r => fix2(A(r).siera) },
+    { label: 'SD-MD',  get: r => raw(r, sc.sdmd) },
+    { label: 'WPA/LI', get: r => fix2(A(r).wpali) },
+    { label: 'PLV',    get: r => fix2(L.plv.get(normName(nameOf(r)))) },
+    { label: 'Stuff+', get: r => int0(L.stuff.get(normName(nameOf(r)))) },
+    { label: 'Zc-Os%', get: r => txt(A(r).zcos) },
+    { label: 'SwStr%', get: r => { const p = P(r); return p && real(p.sw)  ? txt(p.sw)  : raw(r, sc.sw); } },
+    { label: 'CSW%',   get: r => { const p = P(r); return p && real(p.csw) ? txt(p.csw) : txt(A(r).csw); } },
+    { label: 'K-BB%',  get: r => raw(r, sc.kbb) },
+  ];
+}
+
+const OFFSEASON_SOURCE_NOTE =
+  'SIERA, WPA/LI, Zc-Os% via FanGraphs (full season, no IP minimum) · ' +
+  'SwStr% and CSW% are Pitcher List’s own numbers (FanGraphs where a pitcher isn’t in that export) · ' +
+  'PLV = Pitch Level Value, Stuff+ = Pitcher List Stuff+ (min 50 pitches each) · ' +
+  'Zc-Os% = Z-Contact% − O-Swing% (lower = better)';
+
 /* Rows that only label a section ("MUTUAL/VESTING OPTION  (7)") or footer the
    sheet ("Auto-generated from…"). Both carry text in column A and nothing in B. */
 function isFaSectionRow(r) {
@@ -1246,13 +1336,18 @@ function isFaSectionRow(r) {
   return !!a && !b;
 }
 
+/* Locate a column by header name, so a reordered sheet can't shift a stat. */
+function colFinder(header, limit) {
+  return re => header.slice(0, limit == null ? header.length : limit).findIndex(h => re.test(h));
+}
+
 /* ── Free Agents (offseason) ───────────────────────────────
    One flat sortable table. The sheet groups players into contract sections,
    but the status column already carries that, so the section header rows are
    dropped — otherwise they'd scatter through the table on the first sort.
    Sortable on every column except the last two (status + notes).
    ─────────────────────────────────────────────────────────── */
-function renderFreeAgents(rows, tabIdx) {
+function renderFreeAgents(rows, L, tabIdx) {
   const header = rows[0].map(h => String(h == null ? '' : h).trim());
   const notes  = [];
   let data = rows.slice(1).filter(r => {
@@ -1265,97 +1360,78 @@ function renderFreeAgents(rows, tabIdx) {
     return true;
   });
 
-  const NOSORT = 2;                        // status + notes stay put
-  const last   = header.length - 1;
-  const statusCol = last - 1, notesCol = last;
+  const col = colFinder(header);
+  const iPlayer = 1;
+  const nameOf = r => String(r[iPlayer] == null ? '' : r[iPlayer]).trim();
+  const raw = (r, i) => (i < 0 || r[i] == null) ? '' : r[i];
+  const iThr = col(/^thr$/i), iRole = col(/current role/i),
+        iCt = col(/contract/i), iNotes = col(/^notes$/i);
+  const stats = offseasonStatSpec(L, {
+    ip: col(/^ip$/i), sdmd: col(/^sd-md$/i), sw: col(/^swstr%$/i), kbb: col(/^k-bb%$/i),
+  }, nameOf);
+
+  const SPEC = [
+    { label: 'TEAM',         get: r => raw(r, 0) },           // A1 doubles as a section title
+    { label: 'PLAYER',       get: nameOf, kind: 'player' },
+    { label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
+    { label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole) },
+  ].concat(stats.map(s => Object.assign({ num: true }, s))).concat([
+    { label: header[iCt]    || '2027 Contract Status', get: r => raw(r, iCt), kind: 'contract', fixed: true },
+    { label: header[iNotes] || 'NOTES',                get: r => raw(r, iNotes), fixed: true },
+  ]);
 
   const st = sortState[tabIdx];
-  if (st) {
+  if (st && SPEC[st.col] && !SPEC[st.col].fixed) {
+    const g = SPEC[st.col].get;
     data = data.slice().sort((a, b) => {
-      const av = numVal(a[st.col]), bv = numVal(b[st.col]);
+      const av = numVal(g(a)), bv = numVal(g(b));
       if (!isNaN(av) || !isNaN(bv)) {      // numeric column
         if (isNaN(av)) return 1;
         if (isNaN(bv)) return -1;
         return st.dir * (av - bv);
       }
-      return st.dir * String(a[st.col] || '').localeCompare(String(b[st.col] || ''));
+      return st.dir * String(g(a) || '').localeCompare(String(g(b) || ''));
     });
   }
 
   let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
-  header.forEach((label, i) => {
-    // Column A's header doubles as a section title in the sheet ("TEAM FREE
-    // AGENT  (51)") — show just "TEAM".
-    const disp = i === 0 ? 'TEAM' : label;
-    h += (i <= last - NOSORT)
-      ? sortableTh(disp, i, tabIdx, i >= 4)
-      : '<th>' + esc(disp) + '</th>';
+  SPEC.forEach((c, i) => {
+    h += c.fixed ? '<th>' + esc(c.label) + '</th>' : sortableTh(c.label, i, tabIdx, !!c.num);
   });
   h += '</tr></thead><tbody>';
   for (const r of data) {
     h += '<tr class="data-row">';
-    header.forEach((_, i) => {
-      const v = r[i] == null ? '' : r[i];
-      if (i === 1) {
+    for (const c of SPEC) {
+      const v = c.get(r);
+      if (c.kind === 'player') {
         h += '<td><span class="pl-name-link" data-plname="' + esc(String(v)) +
              '" title="Open Pitcher List player page">' + esc(String(v)) + '</span></td>';
-      } else if (i === statusCol) {
-        const c = contractClass(v);
+      } else if (c.kind === 'contract') {
         h += '<td>' + (String(v).trim()
-              ? '<span class="ct-badge ' + c + '">' + esc(String(v)) + '</span>' : '') + '</td>';
+              ? '<span class="ct-badge ' + contractClass(v) + '">' + esc(String(v)) + '</span>' : '') + '</td>';
       } else {
-        h += '<td class="' + (i >= 4 && i !== notesCol ? 'num' : '') + '">' + cellHtml(v) + '</td>';
+        h += '<td class="' + (c.num ? 'num' : '') + '">' + cellHtml(v) + '</td>';
       }
-    });
+    }
     h += '</tr>';
   }
   h += '</tbody></table></div></div>';
   h += contractLegendHtml();
-  h += footNotes(notes.concat([data.length + ' free agent(s) listed']));
-  setMeta('Sortable on every column through ' + (header[last - NOSORT] || '') +
-          ' · Contract status and notes are fixed');
+  h += footNotes(notes.concat([OFFSEASON_SOURCE_NOTE, data.length + ' free agent(s) listed']));
+  setMeta('Sortable on every column through K-BB% · Contract status and notes are fixed');
   return h;
 }
 
 /* ── Closer Outlook (offseason) ────────────────────────────
    Replaces the depth charts, so it keeps the team-card shape. The sheet is a
-   flat 368-row table, so rows are grouped by the TEAM column; each team gets
-   a full-width card (14 columns don't fit a 5-across grid).
+   flat table, so rows are grouped by the TEAM column; each team gets a
+   full-width card on a shared fixed column grid.
    ─────────────────────────────────────────────────────────── */
-function renderCloserOutlook(rows, statRows, plvRows) {
+function renderCloserOutlook(rows, L) {
   const header = rows[0].map(h => String(h == null ? '' : h).trim());
-
-  // PLV comes straight from the hand-pasted "PLV Data" tab (Pitcher List's
-  // export, 50-pitch floor), joined by name — re-paste it and this updates.
-  // Same first-sheet-fallback guard as below: trust it only if it really has
-  // Player and PLV headers.
-  const plv = new Map();
-  const ph  = ((plvRows || [])[0] || []).map(x => String(x == null ? '' : x).trim().toUpperCase());
-  const pName = ph.indexOf('PLAYER'), pVal = ph.indexOf('PLV');
-  if (pName === 0 && pVal > 0) {
-    plvRows.slice(1).forEach(r => {
-      const nm = String(r[pName] == null ? '' : r[pName]).trim();
-      if (nm) plv.set(normName(nm), r[pVal]);
-    });
-  }
-
-  // SIERA + WPA/LI aren't on the outlook sheet — they come from the "Outlook
-  // Stats" tab the Apps Script writes each offseason (every pitcher, no IP
-  // floor), joined by name. Missing tab → those two columns just read "—".
-  const adv = new Map();
-  // gviz quietly serves the FIRST sheet when a tab name doesn't exist, so
-  // until the script has created "Outlook Stats" this would be RP Leaderboard
-  // rows. Only trust it if the headers are actually Name / SIERA / WPA/LI.
-  const sh = ((statRows || [])[0] || []).map(x => String(x == null ? '' : x).trim().toUpperCase());
-  const statsOk = sh[0] === 'NAME' && sh[1] === 'SIERA' && sh[2] === 'WPA/LI';
-  const hasCsw  = statsOk && sh[3] === 'CSW%';   // older runs wrote 3 columns
-  (statsOk ? statRows : []).slice(1).forEach(r => {
-    const nm = String(r[0] == null ? '' : r[0]).trim();
-    if (nm) adv.set(normName(nm), { siera: r[1], wpali: r[2], csw: hasCsw ? r[3] : '' });
-  });
   // The sheet parks a contract-status legend in columns P+, which gviz hands
   // back as extra columns. A blank header marks the gap before it — stop there
-  // so the legend doesn't render as two phantom stat columns.
+  // so the legend doesn't render as phantom columns.
   const blankAt = header.findIndex(h => !h);
   const cols    = blankAt > 0 ? blankAt : header.length;
   const notes   = [];
@@ -1375,49 +1451,26 @@ function renderCloserOutlook(rows, statRows, plvRows) {
     byTeam.get(team).push(r);
   });
 
-  // Columns are located by header name, not position, so a reordered sheet
-  // can't silently shift a stat into the wrong column.
-  const col = re => header.slice(0, cols).findIndex(h => re.test(h));
-  const iPlayer = 1,
-        iThr  = col(/^thr$/i),        iRole = col(/current role/i),
-        iIP   = col(/^ip$/i),         iWHIP = col(/^whip$/i),
-        iSV   = col(/^sv$/i),         iHLD  = col(/^hld$/i),
-        iSDMD = col(/^sd-md$/i),      iSw   = col(/^swstr%$/i),
-        iKBB  = col(/^k-bb%$/i),      iCt   = col(/contract/i),
-        iOdds = col(/closer odds/i);
-  const raw  = (r, i) => (i < 0 || r[i] == null) ? '' : r[i];
-  const fix2 = v => { const n = numVal(v); return isNaN(n) ? '' : n.toFixed(2); };
-  const svhld = r => {
-    const a = numVal(raw(r, iSV)), b = numVal(raw(r, iHLD));
-    if (isNaN(a) && isNaN(b)) return '';
-    return String((isNaN(a) ? 0 : a) + (isNaN(b) ? 0 : b));
-  };
-  const stat = (r, k) => { const s = adv.get(normName(String(raw(r, iPlayer)))); return s ? fix2(s[k]) : ''; };
-  // CSW% arrives pre-formatted ("38.3%") — pass it through untouched.
-  const csw  = r => { const s = adv.get(normName(String(raw(r, iPlayer)))); return s ? String(s.csw || '') : ''; };
+  const col = colFinder(header, cols);
+  const iPlayer = 1;
+  const nameOf = r => String(r[iPlayer] == null ? '' : r[iPlayer]).trim();
+  const raw = (r, i) => (i < 0 || r[i] == null) ? '' : r[i];
+  const iThr = col(/^thr$/i), iRole = col(/current role/i),
+        iCt = col(/contract/i), iOdds = col(/closer odds/i);
+  const stats = offseasonStatSpec(L, {
+    ip: col(/^ip$/i), sdmd: col(/^sd-md$/i), sw: col(/^swstr%$/i), kbb: col(/^k-bb%$/i),
+  }, nameOf);
 
-  // ERA / SV / HLD swapped for SIERA / WPA/LI / SV+HLD — the ERA→SIERA and
-  // SV,HLD→WPA/LI,SV+HLD swaps keep the same slots the old columns sat in.
-  // w = column width (% of the card). Every card uses the same widths with a
-  // fixed table layout, so columns sit in identical positions down all 30
-  // cards instead of each table sizing itself to its own content.
+  // w = column width (% of the card). Every card shares these widths under a
+  // fixed table layout, so columns sit in identical positions on all 30 cards.
   const SPEC = [
-    { w: 13,  label: header[iPlayer] || 'PLAYER', kind: 'player' },
-    { w: 4,   label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
-    { w: 11,  label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole) },
-    { w: 5,   label: 'IP',     num: true, get: r => raw(r, iIP) },
-    { w: 5,   label: 'SIERA',  num: true, get: r => stat(r, 'siera') },
-    { w: 5,   label: 'WHIP',   num: true, get: r => raw(r, iWHIP) },
-    { w: 5.5, label: 'WPA/LI', num: true, get: r => stat(r, 'wpali') },
-    { w: 5,   label: 'PLV',    num: true, get: r => fix2(plv.get(normName(String(raw(r, iPlayer))))) },
-    { w: 5.5, label: 'SV+HLD', num: true, get: r => svhld(r) },
-    { w: 5,   label: header[iSDMD] || 'SD-MD',  num: true, get: r => raw(r, iSDMD) },
-    { w: 5.5, label: header[iSw]   || 'SwStr%', num: true, get: r => raw(r, iSw)   },
-    { w: 5.5, label: 'CSW%',                    num: true, get: r => csw(r)        },
-    { w: 5.5, label: header[iKBB]  || 'K-BB%',  num: true, get: r => raw(r, iKBB)  },
-    { w: 11,  label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
-    { w: 8.5, label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
-  ];
+    { w: 10,  label: 'PLAYER', kind: 'player', get: nameOf },
+    { w: 3.5, label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
+    { w: 8.5, label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole) },
+  ].concat(stats.map(s => Object.assign({ w: 5.5, num: true }, s))).concat([
+    { w: 13,  label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
+    { w: 10,  label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
+  ]);
   const colgroup = '<colgroup>' + SPEC.map(c => '<col style="width:' + c.w + '%">').join('') + '</colgroup>';
 
   let h = '<div class="outlook-wrap">';
@@ -1432,16 +1485,15 @@ function renderCloserOutlook(rows, statRows, plvRows) {
     for (const r of list) {
       h += '<tr>';
       for (const c of SPEC) {
+        const v = c.get(r);
         if (c.kind === 'player') {
-          const v = String(raw(r, iPlayer));
-          h += '<td><span class="pl-name-link" data-plname="' + esc(v) +
-               '" title="Open Pitcher List player page">' + esc(v) + '</span></td>';
+          h += '<td><span class="pl-name-link" data-plname="' + esc(String(v)) +
+               '" title="' + esc(String(v)) + ' — open Pitcher List player page">' + esc(String(v)) + '</span></td>';
         } else if (c.kind === 'contract') {
-          const v = c.get(r);
           h += '<td>' + (String(v).trim()
-                ? '<span class="ct-badge ' + contractClass(v) + '">' + esc(String(v)) + '</span>' : '') + '</td>';
+                ? '<span class="ct-badge ' + contractClass(v) + '" title="' + esc(String(v)) + '">' + esc(String(v)) + '</span>' : '') + '</td>';
         } else {
-          h += '<td class="' + (c.num ? 'num' : '') + '">' + cellHtml(c.get(r)) + '</td>';
+          h += '<td class="' + (c.num ? 'num' : '') + '">' + cellHtml(v) + '</td>';
         }
       }
       h += '</tr>';
@@ -1451,7 +1503,7 @@ function renderCloserOutlook(rows, statRows, plvRows) {
   h += '</div>';
   h += contractLegendHtml();
   h += footNotes(notes.concat([
-    'SIERA, WPA/LI and CSW% via FanGraphs (full season, no IP minimum) · PLV = Pitch Level Value (min 50 pitches) · SV+HLD = saves + holds',
+    OFFSEASON_SOURCE_NOTE,
     teams.length + ' team(s) · click a name for their Pitcher List page',
   ]));
   setMeta('Every bullpen for next season · ' + (header[iCt] || 'contract status') +
@@ -1731,10 +1783,8 @@ async function show(i) {
         } catch (e) { /* columns simply omitted if the extras fail */ }
       }
       html = tab.type === 'depth'      ? renderDepth(rows)
-           : tab.type === 'outlook'    ? renderCloserOutlook(rows,
-                 await loadSheet('Outlook Stats').catch(() => null),
-                 await loadSheet('PLV Data').catch(() => null))
-           : tab.type === 'freeagents' ? renderFreeAgents(rows, i)
+           : tab.type === 'outlook'    ? renderCloserOutlook(rows, await loadOffseasonLookups())
+           : tab.type === 'freeagents' ? renderFreeAgents(rows, await loadOffseasonLookups(), i)
            : renderStatboard(rows, i);
     }
     $content.innerHTML = html;
