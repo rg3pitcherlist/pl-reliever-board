@@ -282,7 +282,9 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .outlook-table th.num { text-align: right; }
 /* Headers may wrap to two lines ("2027 CLOSER / ODDS") rather than truncate;
    data cells stay single-line. */
-.outlook-table th { white-space: normal; vertical-align: bottom; }
+/* Extra specificity: a later `.outlook-table th { white-space: nowrap }`
+   rule would otherwise win and truncate "2027 CLOSER ODDS". */
+.outlook-card table.outlook-table th { white-space: normal; vertical-align: bottom; }
 .outlook-table th {
   font: 600 10px 'DM Sans', sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--text-nav); text-align: left; padding: 4px 8px 6px; white-space: nowrap;
@@ -1534,12 +1536,12 @@ function renderCloserOutlook(rows, L) {
   // text ellipsizes (full value on hover) instead of the table sliding.
   // Sums to 100.
   const SPEC = [
-    { w: 10,   label: 'PLAYER', kind: 'player', get: nameOf },
-    { w: 3.5,  label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
-    { w: 8,    label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
-  ].concat(stats.map(s => Object.assign({ w: 5.95, num: true }, s))).concat([
-    { w: 13,   label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
-    { w: 6,    label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
+    { w: 11,    label: 'PLAYER', kind: 'player', get: nameOf },
+    { w: 3.5,   label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
+    { w: 8.75,  label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
+  ].concat(stats.map(s => Object.assign({ w: 5.725, num: true }, s))).concat([
+    { w: 13,    label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
+    { w: 6.5,   label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
   ]);
   const colgroup = '<colgroup>' + SPEC.map(c => '<col style="width:' + c.w + '%">').join('') + '</colgroup>';
 
