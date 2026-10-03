@@ -866,6 +866,26 @@ function buildRankTrends(tab, trendRows, rankRows, ilSet) {
     });
   });
 
+  // Anyone on the current ranking who isn't on the trend tab yet still gets a
+  // row: current rank + team, everything else blank.
+  const seen = new Set(recs.map(x => x.key));
+  const SHORT_TEAM = { SDP: 'SD', TBR: 'TB', CHW: 'CWS', SFG: 'SF', KCR: 'KC', WSN: 'WSH' };
+  rankRows.slice(1).forEach(r => {
+    const nm = (r[1] || '').trim();
+    if (!nm || isNaN(numVal(r[0]))) return;
+    const key = normName(nm);
+    if (seen.has(key)) return;
+    seen.add(key);
+    const tm = (r[2] || '').trim();
+    recs.push({
+      name: nm, team: SHORT_TEAM[tm] || tm, key, onIL: ilSet.has(key),
+      cur: String(cur[key]),
+      fall: '', win: '', spr: '', sum: '', fin: '',
+      dfw: '', dws: '', dss: '', dsf: '', dff: '',
+      ip: '', sv: '', era: '', whip: '', k: '', dm: '',
+    });
+  });
+
   // Default order: current rank asc; unranked pitchers after, by their
   // most recent seasonal rank.
   const altRank = x => {
