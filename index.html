@@ -1076,7 +1076,10 @@ function openPlayerModal(tabIdx, key) {
   addPt('Summer', D.summer, rec.sum);
   if (D.final) addPt('Final', D.final, rec.fin);
   const curN = numVal(rec.cur);
-  if (!isNaN(curN)) rankPts.push({ lbl: 'Now', t: Date.now(), y: curN });
+  // The graph covers one season only: from Oct 1 until Opening Day (offseason)
+  // the current/next-year ranking is left off; the "Now" point returns in season.
+  const inSeasonNow = !isOffseason && new Date().getMonth() < 9;
+  if (!isNaN(curN) && inSeasonNow) rankPts.push({ lbl: 'Now', t: Date.now(), y: curN });
   rankPts.sort((a, b) => a.t - b.t);
 
   const chartCard = (title, body, note) =>
