@@ -1259,15 +1259,20 @@ function renderTransactions(tx) {
 /* ── Injured List tab ──────────────────────────────────── */
 function renderILTab(il) {
   setMeta(il.stamp || ('Data as of ' + new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })));
+  // Est. Return is an in-season column: hidden in the offseason (everyone's
+  // "2027"), and in season it wraps so it can hold a phrase, not just a word.
+  const showRet = !isOffseason;
   let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>' +
-    '<th style="width:210px">Player</th><th>Notes</th><th style="width:220px">Est. Return</th>' +
+    '<th style="width:210px">Player</th><th>Notes</th>' +
+    (showRet ? '<th style="width:260px">Est. Return</th>' : '') +
     '</tr></thead><tbody>';
   for (const r of il.rows) {
+    const ret = String(r[2] == null ? '' : r[2]).trim();
     h += '<tr><td class="player-cell"><div class="player-name pl-name-link" data-plname="' + esc(r[0]) +
       '" title="Open Pitcher List player page">' + esc(r[0]) +
       '<span class="il-badge">IL</span></div></td>' +
       '<td class="wrap">' + esc(r[1]) + '</td>' +
-      '<td>' + cellHtml(r[2]) + '</td></tr>';
+      (showRet ? '<td class="wrap">' + (ret ? esc(ret) : cellHtml('')) + '</td>' : '') + '</tr>';
   }
   h += '</tbody></table></div></div>';
   h += footNotes([il.rows.length + ' pitcher(s) currently listed']);
