@@ -280,6 +280,8 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 }
 .outlook-table th, .outlook-table td { overflow: hidden; text-overflow: ellipsis; }
 .outlook-table th.num { text-align: right; }
+/* Breathing room between K-BB% and the contract badge (2nd-to-last column). */
+.outlook-table th:nth-last-child(2), .outlook-table td:nth-last-child(2) { padding-left: 18px; }
 /* Headers may wrap to two lines ("2027 CLOSER / ODDS") rather than truncate;
    data cells stay single-line. */
 /* Extra specificity: a later `.outlook-table th { white-space: nowrap }`
@@ -1361,9 +1363,11 @@ function offseasonLookups(src) {
 
   let h = hdr(src.adv);
   if (h[0] === 'NAME' && h[1] === 'SIERA') {
-    const iW = h.indexOf('WPA/LI'), iC = h.indexOf('CSW%'), iZ = h.indexOf('ZC-OS%');
+    const iW = h.indexOf('WPA/LI'), iC = h.indexOf('CSW%'), iZ = h.indexOf('ZC-OS%'),
+          iV = h.indexOf('SV+HLD');
     src.adv.slice(1).forEach(r => { const k = key(r); if (k) L.adv.set(k, {
-      siera: r[1], wpali: iW > 0 ? r[iW] : '', csw: iC > 0 ? r[iC] : '', zcos: iZ > 0 ? r[iZ] : '' }); });
+      siera: r[1], wpali: iW > 0 ? r[iW] : '', csw: iC > 0 ? r[iC] : '', zcos: iZ > 0 ? r[iZ] : '',
+      svhld: iV > 0 ? r[iV] : '' }); });
   }
   h = hdr(src.plv);
   if (h[0] === 'PLAYER' && h.indexOf('PLV') > 0) {
@@ -1397,7 +1401,7 @@ function offseasonLookups(src) {
 
 /* The ten stat columns, in order. `sc` = the tab's own column indices for
    IP / SD-MD / SwStr% / K-BB%; `nameOf(row)` = the player's name. */
-function offseasonStatSpec(L, sc, nameOf) {
+function offseasonStatSpec(L, sc, nameOf, variant) {
   const raw  = (r, i) => (i < 0 || r[i] == null) ? '' : r[i];
   const fix2 = v => { const n = numVal(v); return isNaN(n) ? '' : n.toFixed(2); };
   const int0 = v => { const n = numVal(v); return isNaN(n) ? '' : String(Math.round(n)); };
@@ -1405,7 +1409,7 @@ function offseasonStatSpec(L, sc, nameOf) {
   const real = v => numVal(v) > 0;      // PL's export uses 0.0% for "no data"
   const A = r => L.adv.get(normName(nameOf(r))) || {};
   const P = r => L.pl.get(normName(nameOf(r)));
-  return [
+  const spec = [
     { label: 'IP',     get: r => raw(r, sc.ip) },
     { label: 'SIERA',  get: r => fix2(A(r).siera) },
     { label: 'SD-MD',  get: r => raw(r, sc.sdmd) },
@@ -1417,6 +1421,14 @@ function offseasonStatSpec(L, sc, nameOf) {
     { label: 'CSW%',   get: r => { const p = P(r); return p && real(p.csw) ? txt(p.csw) : txt(A(r).csw); } },
     { label: 'K-BB%',  get: r => raw(r, sc.kbb) },
   ];
+  // 2027 Closer Outlook: season SV+HLD (from "Outlook Stats") sits between
+  // SIERA and SD-MD, and CSW% is dropped. Free Agents keeps the base set.
+  if (variant === 'outlook') {
+    spec.splice(spec.findIndex(s => s.label === 'CSW%'), 1);
+    spec.splice(spec.findIndex(s => s.label === 'SD-MD'), 0,
+      { label: 'SV+HLD', get: r => int0(A(r).svhld) });
+  }
+  return spec;
 }
 
 // Footer. The PLV / Zc-Os% definitions live in the header line instead.
@@ -1557,13 +1569,15 @@ function renderCloserOutlook(rows, L) {
         iCt = col(/contract/i), iOdds = col(/closer odds/i);
   const stats = offseasonStatSpec(L, {
     ip: col(/^ip$/i), sdmd: col(/^sd-md$/i), sw: col(/^swstr%$/i), kbb: col(/^k-bb%$/i),
-  }, nameOf);
+  }, nameOf, 'outlook');
 
   // w = column width (% of the card). Every card shares these widths under a
   // fixed table layout, so columns sit in identical positions on all 30 cards.
   // Stat widths are individual: short-valued columns (SD-MD, PLV, SIERA) give
   // up a little room so "2027 Closer Odds" fits on one line.
-  const STAT_W = { 'IP': 5.4, 'SIERA': 4.9, 'SD-MD': 4.8, 'WPA/LI': 5.6, 'PLV': 4.8,
+  // IP is narrow (values like "64.1") so the stat block starts further left,
+  // leaving the contract column more room.
+  const STAT_W = { 'IP': 4.6, 'SIERA': 4.9, 'SV+HLD': 5.5, 'SD-MD': 4.8, 'WPA/LI': 5.6, 'PLV': 4.8,
                    'Stuff+': 5.3, 'Zc-Os%': 5.9, 'SwStr%': 5.9, 'CSW%': 5.5, 'K-BB%': 5.6 };
   // Column widths (% of the card), shared by every card so columns line up.
   // The tables don't scroll — they fit the card — so on narrow screens long
@@ -1572,9 +1586,9 @@ function renderCloserOutlook(rows, L) {
   const SPEC = [
     { w: 11.25, label: 'PLAYER', kind: 'player', get: nameOf },
     { w: 3.5,   label: header[iThr]  || 'THR',          get: r => raw(r, iThr)  },
-    { w: 9.1,   label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
+    { w: 8.5,   label: header[iRole] || 'CURRENT ROLE', get: r => raw(r, iRole), tip: true },
   ].concat(stats.map(s => Object.assign({ w: STAT_W[s.label] || 5.5, num: true }, s))).concat([
-    { w: 13,    label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
+    { w: 14.4,  label: header[iCt]   || '2027 Contract Status', kind: 'contract', get: r => raw(r, iCt) },
     { w: 9.45,  label: header[iOdds] || '2027 Closer Odds',                        get: r => raw(r, iOdds) },
   ]);
   const colgroup = '<colgroup>' + SPEC.map(c => '<col style="width:' + c.w + '%">').join('') + '</colgroup>';
