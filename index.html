@@ -97,6 +97,14 @@ body {
 /* ── Content ───────────────────────────────────────────── */
 .content { padding: 20px 28px 32px; }
 
+/* ── Page width ────────────────────────────────────────────
+   Everything sits in one centred column, max 1600px. Inside it, each table is
+   capped at (number of columns × a max column width) by capTables(), so a
+   short table doesn't stretch its columns across a wide screen. Cell padding
+   scales between 12px and 18px — never tighter, so nothing gets squished. */
+.league-header, .content { max-width: 1600px; margin-left: auto; margin-right: auto; }
+:root { --cell-pad-x: clamp(12px, 1.05vw, 18px); }
+
 /* ── Tables ────────────────────────────────────────────── */
 .table-wrap {
   border: 1px solid var(--border-table); border-radius: 10px;
@@ -123,7 +131,7 @@ table { width: 100%; border-collapse: collapse; }
 th {
   background: #2E3658;
   font: 600 12px 'Work Sans', sans-serif; color: var(--cyan-header);
-  height: 34.5px; padding: 0 14px;
+  height: 34.5px; padding: 0 var(--cell-pad-x);
   border-bottom: 1px solid var(--border-thead);
   /* solid bottom rule travels with the sticky header as rows pass under it */
   box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08),
@@ -137,7 +145,7 @@ tbody tr:nth-child(odd)  { background: var(--row-a); }
 tbody tr:nth-child(even) { background: var(--row-b); }
 tbody tr { border-bottom: 1px solid var(--border-row); }
 tbody tr:last-child { border-bottom: none; }
-td { padding: 10px 14px; font: 400 14px 'Work Sans', sans-serif; color: var(--text-cell); white-space: nowrap; }
+td { padding: 10px var(--cell-pad-x); font: 400 14px 'Work Sans', sans-serif; color: var(--text-cell); white-space: nowrap; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.zero, .zero { color: var(--text-zero); }
 .player-cell { min-width: 168px; }
@@ -197,21 +205,33 @@ tr.data-row { height: 62px; }
 }
 .sp-toggle:hover { border-color: rgba(255,194,119,0.4); color: #eef2fb; }
 .sp-toggle input { accent-color: var(--amber); width: 15px; height: 15px; cursor: pointer; margin: 0; }
+/* Tags are bold coloured text — no pills/chips anywhere on the board. */
 .sp-badge {
-  display: inline-block; margin-left: 8px; vertical-align: middle;
-  font: 700 9px/1 'DM Sans', sans-serif; letter-spacing: 0.06em;
-  color: var(--amber); background: rgba(255,194,119,0.12);
-  border: 1px solid rgba(255,194,119,0.42); border-radius: 5px; padding: 2px 5px;
+  margin-left: 8px; font: 800 11px/1 'DM Sans', sans-serif; letter-spacing: 0.06em;
+  color: var(--amber);
 }
 tbody tr.sp-flagged { background: rgba(255,194,119,0.085) !important; }
 tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,0.75); }
 
-/* ── Footnotes under tables ────────────────────────────── */
-.foot-note {
-  font: 400 13px 'Work Sans', sans-serif; color: var(--text-zero);
-  margin-top: 12px; line-height: 1.5;
+/* ── Notes card under tables ───────────────────────────── */
+.notes-card {
+  margin-top: 18px; padding: 16px 20px 14px;
+  background: var(--surface-3); border: 1px solid var(--border-table); border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
-.foot-note a { color: var(--cyan); text-decoration: none; }
+.notes-card h5 {
+  font: 700 12px 'DM Sans', sans-serif; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--cyan-header); margin-bottom: 8px;
+}
+.notes-card ul { list-style: none; }
+.notes-card li {
+  font: 400 15px/1.55 'Work Sans', sans-serif; color: rgba(226,230,244,0.88);
+  padding: 4px 0; border-top: 1px solid var(--border-row);
+}
+.notes-card li:first-child { border-top: none; }
+.notes-card li b { font-weight: 700; color: var(--text-player); }
+.notes-card a { color: var(--cyan); text-decoration: none; word-break: break-all; }
+.notes-card a:hover { text-decoration: underline; }
 
 /* ── Depth chart cards ─────────────────────────────────── */
 .bp-grid {
@@ -234,26 +254,24 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 }
 .bp-row { display: flex; align-items: center; gap: 8px; padding: 4.5px 0; }
 .bp-role {
-  font: 700 10px 'DM Sans', sans-serif; letter-spacing: 0.05em;
-  border-radius: 6px; padding: 2.5px 8px; min-width: 26px; text-align: center;
-  background: var(--surface-3); border: 1px solid var(--border-tab); color: var(--text-nav);
+  font: 800 11px 'DM Sans', sans-serif; letter-spacing: 0.06em;
+  min-width: 26px; color: var(--text-nav);
 }
-.bp-role.cl { color: var(--cyan);  border-color: rgba(85,232,255,0.4);  background: rgba(85,232,255,0.08); }
-.bp-role.co { color: var(--blue);  border-color: rgba(61,169,245,0.4);  background: rgba(61,169,245,0.08); }
-.bp-role.su { color: var(--amber); border-color: rgba(255,194,119,0.4); background: rgba(255,194,119,0.08); }
+.bp-role.cl { color: var(--cyan); }
+.bp-role.co { color: var(--blue); }
+.bp-role.su { color: var(--amber); }
 .bp-name { font: 500 14px 'Work Sans', sans-serif; color: var(--text-cell); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .bp-hand { font: 600 11px 'Work Sans', sans-serif; color: var(--text-zero); }
 .bp-hand.lefty { color: var(--gold); }
 .chip {
-  display: inline-block; font: 700 10px 'DM Sans', sans-serif; letter-spacing: 0.05em;
-  border-radius: 6px; padding: 2.5px 8px; margin-bottom: 10px;
-  border: 1px solid var(--border-tab); background: var(--surface-3); color: var(--text-nav);
+  display: block; font: 800 11px 'DM Sans', sans-serif; letter-spacing: 0.07em;
+  margin-bottom: 8px; color: var(--text-nav);
 }
-.chip.stable    { color: var(--green);  border-color: rgba(52,211,153,0.45); background: rgba(52,211,153,0.09); }
-.chip.cautious  { color: var(--amber);  border-color: rgba(255,194,119,0.45); background: rgba(255,194,119,0.09); }
-.chip.unstable  { color: var(--red);    border-color: rgba(244,112,124,0.45); background: rgba(244,112,124,0.09); }
-.chip.committee { color: var(--violet); border-color: rgba(167,139,250,0.45); background: rgba(167,139,250,0.09); }
-.chip.interim   { color: var(--gold);   border-color: rgba(245,185,80,0.45);  background: rgba(245,185,80,0.09); }
+.chip.stable    { color: var(--green); }
+.chip.cautious  { color: var(--amber); }
+.chip.unstable  { color: var(--red); }
+.chip.committee { color: var(--violet); }
+.chip.interim   { color: var(--gold); }
 /* No coloured top border on the cards — the status chip already carries
    the colour, so the stripe was redundant. */
 
@@ -271,12 +289,11 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
    fits its card and never slides sideways. */
 .outlook-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .outlook-card { overflow: hidden; }
-/* Team name in club colours (fill = primary, border = secondary). */
+/* Team name as bold text in the club's most readable colour, with a short
+   accent bar in its primary colour (set inline by teamPill). */
 .team-pill {
-  display: inline-block; padding: 3px 12px; border-radius: 8px;
-  border: 2px solid var(--border-tab); background: var(--surface-3);
-  color: #fff; font: 700 14px/1.3 'Work Sans', sans-serif; letter-spacing: 0.01em;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+  display: inline-block; padding-left: 10px; border-left: 4px solid var(--border-tab);
+  color: var(--text-player); font: 800 17px/1.25 'DM Sans', sans-serif; letter-spacing: 0.01em;
 }
 .outlook-table th, .outlook-table td { overflow: hidden; text-overflow: ellipsis; }
 .outlook-table th.num { text-align: right; }
@@ -299,17 +316,19 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .outlook-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .outlook-table tbody tr:nth-child(odd) td { background: rgba(255,255,255,0.022); }
 
+/* Contract status: bold text, one colour per status type. */
 .ct-badge {
-  display: inline-block; font: 600 10.5px 'DM Sans', sans-serif;
-  border-radius: 6px; padding: 2px 7px; white-space: nowrap;
-  border: 1px solid var(--border-tab); background: var(--surface-3); color: var(--text-nav);
+  font: 700 13px 'Work Sans', sans-serif; white-space: nowrap; color: var(--text-nav);
 }
-.ct-badge.ct-fa { color: var(--green);  border-color: rgba(52,211,153,0.45);  background: rgba(52,211,153,0.10); }
-.ct-badge.ct-po { color: var(--violet); border-color: rgba(167,139,250,0.45); background: rgba(167,139,250,0.10); }
-.ct-badge.ct-to { color: var(--amber);  border-color: rgba(255,194,119,0.45); background: rgba(255,194,119,0.10); }
-.ct-badge.ct-mv { color: var(--cyan);   border-color: rgba(103,232,249,0.42); background: rgba(103,232,249,0.10); }
+.ct-badge.ct-fa  { color: var(--green); }
+.ct-badge.ct-po  { color: var(--violet); }
+.ct-badge.ct-to  { color: var(--amber); }
+.ct-badge.ct-mv  { color: var(--cyan); }
+.ct-badge.ct-sg  { color: var(--blue); }
+.ct-badge.ct-arb { color: var(--red); }
+.ct-badge.ct-pre { color: rgba(203,215,253,0.78); }
 .ct-legend {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; margin-top: 14px;
 }
 .ct-none { font: 400 12px 'Work Sans', sans-serif; color: var(--text-zero); }
 
@@ -319,10 +338,8 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 
 /* ── IL badge (from the Injured List sheet) ────────────── */
 .il-badge {
-  display: inline-block; margin-left: 8px; vertical-align: middle;
-  font: 700 9px/1 'DM Sans', sans-serif; letter-spacing: 0.06em;
-  color: var(--red); background: rgba(244,112,124,0.12);
-  border: 1px solid rgba(244,112,124,0.45); border-radius: 5px; padding: 2px 5px;
+  margin-left: 8px; font: 800 11px/1 'DM Sans', sans-serif; letter-spacing: 0.06em;
+  color: var(--red);
 }
 td .delta-il { color: var(--red); font-weight: 600; }
 td .delta-sp { color: var(--amber); font-weight: 600; }
@@ -694,6 +711,9 @@ function contractClass(s) {
   if (/player option/i.test(t))               return 'ct-po';
   if (/club option|team option/i.test(t))     return 'ct-to';
   if (/mutual|vesting/i.test(t))              return 'ct-mv';
+  if (/pre-?arb/i.test(t))                    return 'ct-pre';
+  if (/\barb\b/i.test(t))                     return 'ct-arb';
+  if (/signed|thru|through|\$/i.test(t))      return 'ct-sg';
   return '';
 }
 
@@ -767,10 +787,9 @@ function renderStatboard(rows, tabIdx) {
   applyBoardLabel(rows, tabIdx);
   const extraNotes = notes.filter(n => !/^Last updated/i.test(n) && !/^Board:/i.test(n));
   if (sheetName === 'SV+HLD Trends') {
-    extraNotes.push('Stay up to date with the latest save and hold getters: ' +
-      'https://x.com/PitcherListSVs  |  https://bsky.app/profile/pitcherlistsaves.pitcherlist.com');
+    extraNotes.push('Latest save and hold getters: https://x.com/PitcherListSVs');
+    extraNotes.push('Also on Bluesky: https://bsky.app/profile/pitcherlistsaves.pitcherlist.com');
   }
-  h += footNotes(extraNotes);
   let metaNote = notes.find(n => /^Last updated/i.test(n) || /^Board:/i.test(n)) || '';
   // The "Board: <name>" token is plumbing for the tab label, not a legend
   // entry — the tab already says it, so drop it from the visible meta line.
@@ -792,51 +811,26 @@ function renderStatboard(rows, tabIdx) {
     metaNote = metaNote.replace(/Window:[^|]*/i, 'Window: Past 30 Days  ');
   }
 
-  /* Meta legend: split onto a second line at the tab's "headline" note so the
-     stamp/thresholds stay on line 1 and the scoring key sits on line 2. */
-  const BREAK_AT = {
-    'RP Leaderboard':   /^RP Score\s*=/i,
-    'Past Month Board': /^RP Score\s*=/i,
-    'SV+HLD Trends':    /^Usage\s*=/i,
-    'Combined Ranks':   /^SV\+HLD Rank/i,
-  };
-  const breakRe = BREAK_AT[sheetName];
-  if (breakRe) {
-    if (sheetName === 'Combined Ranks') {
-      metaNote = metaNote.replace(/your manual ranking/i, 'my manual ranking');
-    }
-    let parts = metaNote.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
-    // Drop the trailing "weights on …" hint if an older run still writes it.
-    parts = parts.map(p => p.replace(/\s*;?\s*weights on\s*[“"]?Score Weights[”"]?\s*tab\s*\)?/i,
-                                     m => /\)$/.test(m) ? ')' : ''));
-    if (sheetName === 'Combined Ranks') {
-      parts = parts.filter(p => !/^Sorted by Combined (Rank|Score)/i.test(p));
-      const svIdx = parts.findIndex(p => /^SV\+HLD Rank/i.test(p));
-      if (svIdx !== -1) parts.splice(svIdx + 1, 0,
-        'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Rank)',
-        'SV+HLD’s = total Saves + Holds for the season');
-      // Three lines: sources · manual ranks · the two score definitions
-      // (SV+HLD’s and Combined Score share the last line).
-      const isScoreDef = p => /^SV\+HLD[’']s\s*=/i.test(p) || /^Combined (Rank|Score)\s*=/i.test(p);
-      const defs = parts.filter(isScoreDef);
-      const rest = parts.filter(p => !isScoreDef(p));
-      const bi   = rest.findIndex(p => breakRe.test(p));
-      const l1   = bi > 0 ? rest.slice(0, bi) : rest;
-      const l2   = bi > 0 ? rest.slice(bi) : [];
-      $meta.innerHTML = [l1, l2, defs].filter(a => a.length)
-        .map(a => esc(a.join(' · '))).join('<br>');
-      return h;
-    }
-    const idx = parts.findIndex(p => breakRe.test(p));
-    if (idx > 0) {
-      $meta.innerHTML = esc(parts.slice(0, idx).join(' · ')) + '<br>' +
-                        esc(parts.slice(idx).join(' · '));
-    } else {
-      setMeta(parts.join(' | '));
-    }
-  } else {
-    setMeta(metaNote);
+  /* Header line = just the quick facts (updated · min IP · window). Every
+     definition and source note goes into the Notes card under the table,
+     where it's big enough to read. */
+  if (sheetName === 'Combined Ranks') {
+    metaNote = metaNote.replace(/your manual ranking/i, 'my manual ranking');
   }
+  let parts = metaNote.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
+  // Drop the trailing "weights on …" hint if an older run still writes it.
+  parts = parts.map(p => p.replace(/\s*;?\s*weights on\s*[“"]?Score Weights[”"]?\s*tab\s*\)?/i,
+                                   m => /\)$/.test(m) ? ')' : ''));
+  parts = parts.filter(p => !/^Sorted by/i.test(p));      // the table already shows its sort
+  if (sheetName === 'Combined Ranks') {
+    const svIdx = parts.findIndex(p => /^SV\+HLD Rank/i.test(p));
+    if (svIdx !== -1) parts.splice(svIdx + 1, 0,
+      'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Score)',
+      'SV+HLD’s = total Saves + Holds for the season');
+  }
+  const isQuick = p => /^(Last updated|Min IP|Window)/i.test(p);
+  setMeta(parts.filter(isQuick).join(' | '));
+  h += footNotes(parts.filter(p => !isQuick(p)).concat(extraNotes));
   return h;
 }
 
@@ -1004,11 +998,12 @@ function renderRankTrends(tab, tabIdx, built) {
   dateBits.push(tab.finalHeader + ' = ' + (D.final || 'end of season'));
 
   h += footNotes([
-    'Current Rank ← “' + tab.ranksSheet + '” (my manual ranking, updated weekly)',
-    'Rank publish dates: ' + dateBits.join('  |  '),
-    'Δ columns: ▲ = rose in the ranks, ▼ = fell  |  IL = missed the entire season  |  SP = moved to the rotation  |  blank = not ranked that period',
-    'IL badge = currently on the injured list  |  Click any player for rank, ERA, K% and WHIP trend graphs',
-    'If you’re looking for the detailed list or ranking of Relievers, check out my weekly RP Ranks: https://pitcherlist.com/category/fantasy/relief-pitchers/reliever-ranks/',
+    'Current Rank: my weekly ranking (“' + tab.ranksSheet + '”)',
+    'Rank dates: ' + dateBits.join('  |  '),
+    'IL in a Δ column: missed the entire season  |  SP: moved to the rotation',
+    'Red IL next to a name: currently on the injured list',
+    'Click any pitcher for his rank, ERA, K% and WHIP graphs',
+    'Full weekly RP Ranks: https://pitcherlist.com/category/fantasy/relief-pitchers/reliever-ranks/',
   ]);
   setMeta(built.stamp || '');
   return h;
@@ -1308,8 +1303,7 @@ function renderILTab(il) {
   for (const r of il.rows) {
     const ret = String(r[2] == null ? '' : r[2]).trim();
     h += '<tr><td class="player-cell"><div class="player-name pl-name-link" data-plname="' + esc(r[0]) +
-      '" title="Open Pitcher List player page">' + esc(r[0]) +
-      '<span class="il-badge">IL</span></div></td>' +
+      '" title="Open Pitcher List player page">' + esc(r[0]) + '</div></td>' +
       '<td class="wrap">' + esc(r[1]) + '</td>' +
       (showRet ? '<td class="wrap">' + (ret ? esc(ret) : cellHtml('')) + '</td>' : '') + '</tr>';
   }
@@ -1371,14 +1365,33 @@ const TEAM_INFO = {
 function teamPill(code) {
   const t = TEAM_INFO[String(code).trim().toUpperCase()];
   if (!t) return '<span class="team-pill">' + esc(code) + '</span>';   // unknown code: plain
-  return '<span class="team-pill" style="background:' + t[1] + ';border-color:' + t[2] + '">' +
+  // Text takes whichever club colour reads best on the dark card (white if
+  // both are too dark); the accent bar keeps the primary colour.
+  const lum = hex => {
+    const m = String(hex).replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m) return 0;
+    const ch = v => { v = parseInt(v, 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * ch(m[1]) + 0.7152 * ch(m[2]) + 0.0722 * ch(m[3]);
+  };
+  const best = lum(t[1]) >= lum(t[2]) ? t[1] : t[2];
+  const text = lum(best) >= 0.16 ? best : '#f6f8ff';
+  const bar  = lum(t[1]) >= 0.03 ? t[1] : t[2];
+  return '<span class="team-pill" style="color:' + text + ';border-left-color:' + bar + '">' +
          esc(t[0]) + '</span>';
 }
 
-/* Header (meta) line shared by both offseason tabs. */
-const OFFSEASON_META_DEFS =
-  'Zc-Os% = Z-Contact% − O-Swing% (lower = better) · PLV = Pitch Level Value (min ' +
-  PLV_MIN_PITCHES_OFF + ' pitches)';
+/* Notes-card lines shared by both offseason tabs (definitions + sources). */
+function offseasonNotes(variant) {
+  return [
+    'Zc-Os% = Z-Contact% − O-Swing% (lower = better)',
+    'PLV = Pitch Level Value (min ' + PLV_MIN_PITCHES_OFF + ' pitches)',
+    variant === 'outlook' ? 'SV+HLD = 2026 saves + holds' : '',
+    'SIERA, WPA/LI, Zc-Os%: FanGraphs, full season, no IP minimum',
+    (variant === 'outlook' ? 'SwStr%' : 'SwStr% and CSW%') +
+      ': Pitcher List’s own numbers (FanGraphs for pitchers below PL’s minimum)',
+    'Stuff+ = Pitcher List Stuff+ (min ' + STUFF_MIN_PITCHES + ' pitches)',
+  ].filter(Boolean);
+}
 
 async function loadOffseasonLookups() {
   const [adv, plv, pl, stuff] = await Promise.all([
@@ -1468,11 +1481,6 @@ function offseasonStatSpec(L, sc, nameOf, variant) {
   return spec;
 }
 
-// Footer. The PLV / Zc-Os% definitions live in the header line instead.
-const OFFSEASON_SOURCE_NOTE =
-  'SIERA, WPA/LI, Zc-Os% via FanGraphs (full season, no IP minimum) · ' +
-  'SwStr% and CSW% are Pitcher List’s own numbers (FanGraphs for pitchers below minimum) · ' +
-  'Stuff+ = Pitcher List Stuff+ (min ' + STUFF_MIN_PITCHES + ' pitches)';
 
 /* Rows that only label a section ("MUTUAL/VESTING OPTION  (7)") or footer the
    sheet ("Auto-generated from…"). Both carry text in column A and nothing in B. */
@@ -1563,9 +1571,8 @@ function renderFreeAgents(rows, L, tabIdx) {
   }
   h += '</tbody></table></div></div>';
   h += contractLegendHtml();
-  h += footNotes(notes.concat([OFFSEASON_SOURCE_NOTE, data.length + ' free agent(s) listed']));
-  setMeta('Sortable on every column through K-BB% · Contract status and notes are fixed · ' +
-          OFFSEASON_META_DEFS);
+  h += footNotes(offseasonNotes('fa').concat(notes));
+  setMeta(data.length + ' free agents · click any stat header to sort');
   return h;
 }
 
@@ -1659,12 +1666,8 @@ function renderCloserOutlook(rows, L) {
   }
   h += '</div>';
   h += contractLegendHtml();
-  h += footNotes(notes.concat([
-    OFFSEASON_SOURCE_NOTE,
-    teams.length + ' team(s) · click a name for their Pitcher List page',
-  ]));
-  setMeta('Every bullpen for next season · ' + (header[iCt] || 'contract status') +
-          ' colour-coded below · ' + OFFSEASON_META_DEFS);
+  h += footNotes(offseasonNotes('outlook').concat(['Click a pitcher for his Pitcher List page'], notes));
+  setMeta('Every bullpen for ' + upcomingSeasonYear() + ' · ' + teams.length + ' teams');
   return h;
 }
 
@@ -1675,7 +1678,9 @@ function contractLegendHtml() {
     '<span class="ct-badge ct-po">Player Option</span>' +
     '<span class="ct-badge ct-to">Team Option</span>' +
     '<span class="ct-badge ct-mv">Mutual/Vesting Option</span>' +
-    '<span class="ct-none">no highlight = under contract / pre-arb / arb</span>' +
+    '<span class="ct-badge ct-sg">Signed</span>' +
+    '<span class="ct-badge ct-arb">Arbitration</span>' +
+    '<span class="ct-badge ct-pre">Pre-Arb</span>' +
     '</div>';
 }
 
@@ -1755,12 +1760,18 @@ function renderDepth(rows) {
   return h;
 }
 
-function footNotes(notes) {
-  const real = (notes || []).filter(Boolean);
+/* Notes card under a table: one readable line per note. A leading term
+   ("RP Score =", "Recent Score ←", "Current Rank:") is bolded. */
+function footNotes(notes, title) {
+  const real = (notes || []).map(n => String(n || '').trim()).filter(Boolean);
   if (!real.length) return '';
-  return '<div class="foot-note">' + real.map(n =>
-    esc(n).replace(/\s*\|\s*/g, ' · ').replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
-  ).join('<br>') + '</div>';
+  const fmt = n => {
+    let s = esc(n).replace(/\s*\|\s*/g, ' · ')
+      .replace(/(https?:\/\/[^\s·]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    return s.replace(/^([^=←:<]{1,34}?)(\s*(?:=|←|:)\s)/, '<b>$1</b>$2');
+  };
+  return '<div class="notes-card"><h5>' + esc(title || 'Notes') + '</h5><ul>' +
+    real.map(n => '<li>' + fmt(n) + '</li>').join('') + '</ul></div>';
 }
 
 /* ── Tab switching & boot ──────────────────────────────── */
@@ -1881,7 +1892,33 @@ function buildCombinedRows(rows, rankRows, svhldTotals) {
 
 /* Pin the Player column exactly against the rank column by measuring the
    rank column's rendered width (it varies with 1-, 2- or 3-digit ranks). */
+/* Max column width for the data tables. A table never grows wider than
+   (Player column + rank column + every other column at COL_MAX_W), so a
+   board with only a handful of stats stays compact instead of spreading its
+   columns across the whole page. The Hide-SP toggle and the Notes card
+   follow the table's width so everything lines up. Tables with wrapping
+   text (Injured List notes) use the full width. */
+const COL_MAX_W = 132, PLAYER_MAX_W = 250, RANK_W = 56;
+function capTables() {
+  $content.querySelectorAll('.table-wrap').forEach(wrap => {
+    const ths = wrap.querySelectorAll('thead th');
+    if (!ths.length || wrap.querySelector('td.wrap')) return;
+    let w = 0;
+    ths.forEach(th => {
+      const c = th.getAttribute('data-col');
+      w += c === 'player' ? PLAYER_MAX_W : c === 'rank' ? RANK_W : COL_MAX_W;
+    });
+    const px = w + 'px';
+    wrap.style.maxWidth = px;
+    for (const sib of [wrap.previousElementSibling, wrap.nextElementSibling, wrap.nextElementSibling && wrap.nextElementSibling.nextElementSibling]) {
+      if (sib && (sib.classList.contains('board-controls') || sib.classList.contains('notes-card') ||
+                  sib.classList.contains('ct-legend'))) sib.style.maxWidth = px;
+    }
+  });
+}
+
 function syncFrozenColumns() {
+  capTables();
   const tbl = $content.querySelector('table.has-rank');
   if (!tbl) return;
   const cell = tbl.querySelector('td.rank-cell') || tbl.querySelector('th[data-col="rank"]');
