@@ -467,9 +467,53 @@ const $content = document.getElementById('content');
    and is re-prepended so every renderer sees row 0 = header.
    ─────────────────────────────────────────────────────────── */
 let jsonpSeq = 0;
+
+/* The main sheet is Restricted, so its tabs come through Rick's Apps Script
+   web app (doGet in the leaderboard script), which returns each cell's
+   displayed text. Other docs (IL, offseason, Stuff+) still use gviz. If the
+   web app ever fails, fall back to gviz in case the sheet is public again. */
+const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxLyWkT_akY5QFdnby11khEf5sNthsMlMh0svBI-JBvDfs_BNNvFXixXQyfiuPF_ES-/exec';
+
 function loadSheet(sheet, docId) {
   const key = (docId || SHEET_ID) + '::' + (sheet || '');
   if (cache[key]) return Promise.resolve(cache[key]);
+  const viaApi = DATA_API_URL && sheet && (!docId || docId === SHEET_ID);
+  const p = viaApi
+    ? loadViaApi(sheet).catch(() => loadViaGviz(sheet, docId))
+    : loadViaGviz(sheet, docId);
+  return p.then(rows => { cache[key] = rows; return rows; });
+}
+
+function tidyRows(all) {
+  // trim trailing empty cells per row, drop fully empty rows
+  return all.map(r => {
+    r = (r || []).map(v => v == null ? '' : String(v));
+    let end = r.length;
+    while (end > 0 && String(r[end-1]).trim() === '') end--;
+    return r.slice(0, end);
+  }).filter(r => r.length > 0);
+}
+
+function loadViaApi(sheet) {
+  return new Promise((resolve, reject) => {
+    const cb = '__plBoardCb' + (jsonpSeq++);
+    let done = false;
+    const cleanup = () => { done = true; delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); clearTimeout(timer); };
+    window[cb] = resp => {
+      if (done) return;
+      cleanup();
+      if (resp && resp.ok && Array.isArray(resp.rows)) resolve(tidyRows(resp.rows));
+      else reject(new Error((resp && resp.error) || 'bad response'));
+    };
+    const s = document.createElement('script');
+    s.src = DATA_API_URL + '?sheet=' + encodeURIComponent(sheet) + '&callback=' + cb + '&_=' + Date.now();
+    s.onerror = () => { if (!done) { cleanup(); reject(new Error('load failed')); } };
+    const timer = setTimeout(() => { if (!done) { cleanup(); reject(new Error('timeout')); } }, 25000);
+    document.head.appendChild(s);
+  });
+}
+
+function loadViaGviz(sheet, docId) {
   return new Promise((resolve, reject) => {
     const cb = '__plBoardCb' + (jsonpSeq++);
     let done = false;
@@ -482,15 +526,8 @@ function loadSheet(sheet, docId) {
         const data = (resp.table.rows || []).map(r =>
           (r.c || []).map(c => c == null ? '' : (c.f != null ? String(c.f) : (c.v != null ? String(c.v) : '')))
         );
-        const all = [labels].concat(data);
-        // trim trailing empty cells per row, drop fully empty rows
-        const rows = all.map(r => {
-          let end = r.length;
-          while (end > 0 && String(r[end-1]).trim() === '') end--;
-          return r.slice(0, end);
-        }).filter(r => r.length > 0);
+        const rows = tidyRows([labels].concat(data));
         cleanup();
-        cache[key] = rows;
         resolve(rows);
       } catch (e) { cleanup(); reject(e); }
     };
