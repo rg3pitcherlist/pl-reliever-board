@@ -394,6 +394,15 @@ tr.clickable:hover { background: rgba(85,232,255,0.07) !important; }
 .tx-item:nth-child(even) { background: var(--row-b); }
 .tx-item:last-child { border-bottom: none; }
 
+/* ── Rank-trend tables (Closer Ranks / SV+HLD Ranks): compact ── */
+table.rt-table th {
+  white-space: normal; line-height: 1.2; height: auto;
+  padding: 7px 9px; max-width: 92px; vertical-align: bottom;
+}
+table.rt-table th[data-col="player"] { max-width: none; }
+table.rt-table td { padding-left: 9px; padding-right: 9px; }
+table.rt-table td.player-cell { padding-left: var(--cell-pad-x); }
+
 /* ── Injured List tab ──────────────────────────────────── */
 td.wrap { white-space: normal; line-height: 1.5; }
 
@@ -491,14 +500,74 @@ let jsonpSeq = 0;
    web app ever fails, fall back to gviz in case the sheet is public again. */
 const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxLyWkT_akY5QFdnby11khEf5sNthsMlMh0svBI-JBvDfs_BNNvFXixXQyfiuPF_ES-/exec';
 
+/* Speed:
+   1. Every main-sheet tab the board uses comes back in ONE request
+      (fetchBatch), instead of a dozen separate ones.
+   2. The last copy of each tab is kept in this browser (localStorage), so a
+      return visit draws instantly; the fresh copy loads in the background
+      and the current tab redraws only if something actually changed. */
+const API_TABS = [
+  'RP Leaderboard', 'Past Month Board', 'SV+HLD Trends', 'Combined Ranks',
+  'Bullpen Depth Charts', 'Closer Rank Trends', 'SV+HLD Rank Trends',
+  'Save Only Ranks', 'SV+HLD Ranks', 'Outlook Stats', 'PLV Data', 'PL Stats',
+];
+const LS_PREFIX = 'plboard1::';
+function lsGet(key) { try { const v = localStorage.getItem(LS_PREFIX + key); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function lsSet(key, rows) { try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(rows)); } catch (e) {} }
+
+let batchPromise = null;
+function fetchBatch() {
+  if (!batchPromise) batchPromise = loadBatchViaApi(API_TABS).catch(() => ({}));
+  return batchPromise;
+}
+
+const inflight = {};
+let freshTimer = null;
+function onFreshData() {
+  clearTimeout(freshTimer);
+  freshTimer = setTimeout(() => { if (!document.getElementById('playerModal')) show(active); }, 250);
+}
+
 function loadSheet(sheet, docId) {
   const key = (docId || SHEET_ID) + '::' + (sheet || '');
   if (cache[key]) return Promise.resolve(cache[key]);
   const viaApi = DATA_API_URL && sheet && (!docId || docId === SHEET_ID);
-  const p = viaApi
-    ? loadViaApi(sheet).catch(() => loadViaGviz(sheet, docId))
-    : loadViaGviz(sheet, docId);
-  return p.then(rows => { cache[key] = rows; return rows; });
+  if (!inflight[key]) {
+    const p = viaApi
+      ? fetchBatch().then(tabs => tabs[sheet] ? tidyRows(tabs[sheet]) : loadViaApi(sheet))
+                    .catch(() => loadViaGviz(sheet, docId))
+      : loadViaGviz(sheet, docId);
+    inflight[key] = p.then(rows => {
+      const before = cache[key];
+      cache[key] = rows;
+      lsSet(key, rows);
+      if (before && JSON.stringify(before) !== JSON.stringify(rows)) onFreshData();
+      return rows;
+    });
+    inflight[key].catch(() => { delete inflight[key]; });
+  }
+  const stale = lsGet(key);
+  if (stale) { cache[key] = stale; return Promise.resolve(stale); }   // instant; fresh copy follows
+  return inflight[key];
+}
+
+function loadBatchViaApi(names) {
+  return new Promise((resolve, reject) => {
+    const cb = '__plBoardCb' + (jsonpSeq++);
+    let done = false;
+    const cleanup = () => { done = true; delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); clearTimeout(timer); };
+    window[cb] = resp => {
+      if (done) return;
+      cleanup();
+      if (resp && resp.ok && resp.tabs) resolve(resp.tabs);
+      else reject(new Error((resp && resp.error) || 'bad response'));
+    };
+    const s = document.createElement('script');
+    s.src = DATA_API_URL + '?sheets=' + encodeURIComponent(names.join('|')) + '&callback=' + cb + '&_=' + Date.now();
+    s.onerror = () => { if (!done) { cleanup(); reject(new Error('load failed')); } };
+    const timer = setTimeout(() => { if (!done) { cleanup(); reject(new Error('timeout')); } }, 60000);
+    document.head.appendChild(s);
+  });
 }
 
 function tidyRows(all) {
@@ -730,8 +799,17 @@ function renderStatboard(rows, tabIdx) {
   const spCol = header.findIndex(hh => String(hh).trim().toUpperCase() === 'SP');
   const isFlagged = r => spCol >= 0 && String(r[spCol] == null ? '' : r[spCol]).trim() !== '';
 
-  const cols = [];           // displayed columns: [2..end of header], minus SP
-  for (let i = 2; i < header.length; i++) if (i !== spCol) cols.push(i);
+  // Columns kept on the sheet (they still feed RP Score) but not shown, so the
+  // leaderboards fit on one screen without sideways scrolling.
+  const HIDE_COLS = {
+    'RP Leaderboard':   ['RA9-WAR', 'Str-ICR', 'speX'],
+    'Past Month Board': ['RA9-WAR', 'Str-ICR', 'speX'],
+  };
+  const hidden = new Set((HIDE_COLS[TABS[tabIdx] && TABS[tabIdx].sheet] || []).map(s => s.toUpperCase()));
+  const cols = [];           // displayed columns: [2..end of header], minus SP + hidden
+  for (let i = 2; i < header.length; i++) {
+    if (i !== spCol && !hidden.has(String(header[i]).trim().toUpperCase())) cols.push(i);
+  }
 
   // Rank = position in the sheet's own order (already sorted best-first by
   // RP Score / Usage / Combined Score). Captured BEFORE any re-sort so the
@@ -826,7 +904,8 @@ function renderStatboard(rows, tabIdx) {
     const svIdx = parts.findIndex(p => /^SV\+HLD Rank/i.test(p));
     if (svIdx !== -1) parts.splice(svIdx + 1, 0,
       'Save Only Rank ← “Save Only Ranks” (also my manual ranking, not included in Combined Score)',
-      'SV+HLD’s = total Saves + Holds for the season');
+      'SV+HLD’s = total Saves + Holds for the season',
+      'SD-MD = season Shutdowns − Meltdowns (FanGraphs)');
   }
   const isQuick = p => /^(Last updated|Min IP|Window)/i.test(p);
   setMeta(parts.filter(isQuick).join(' | '));
@@ -963,9 +1042,11 @@ function renderRankTrends(tab, tabIdx, built) {
     });
   }
 
-  let h = '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
+  // Compact table: headers wrap onto two lines ("Fall→ / Winter Δ") so the
+  // rank and Δ columns can be as narrow as their 1–3 digit values.
+  let h = '<div class="table-wrap"><div class="table-scroll"><table class="rt-table"><thead><tr>';
   h += sortableTh('Player', 'player', tabIdx, false);
-  for (const [label, field] of COLS) h += sortableTh(label, field, tabIdx, true);
+  for (const [label, field] of COLS) h += sortableTh(label.replace(/→/g, '→​'), field, tabIdx, true);
   h += '</tr></thead><tbody>';
   for (const r of recs) {
     h += '<tr class="data-row clickable" data-key="' + esc(r.key) + '" title="Click for trend graphs">' +
@@ -1852,7 +1933,15 @@ async function loadSvHldTotals() {
    Usage Score · Recent Score · Overall Score · Combined Score.
    Save Only Rank comes live from the "Save Only Ranks" tab. All of it is
    display-only — the sheet and its Combined Rank formula are untouched. */
-function buildCombinedRows(rows, rankRows, svhldTotals) {
+function buildCombinedRows(rows, rankRows, svhldTotals, outlookStats) {
+  // Season SD-MD by name, from the "Outlook Stats" tab (FanGraphs, no IP min).
+  const sdmd = {};
+  const oh = ((outlookStats || [])[0] || []).map(x => String(x).trim().toUpperCase());
+  const iSdmd = oh[0] === 'NAME' ? oh.indexOf('SD-MD') : -1;
+  if (iSdmd > 0) (outlookStats || []).slice(1).forEach(r => {
+    const nm = String(r[0] || '').trim();
+    if (nm && r[iSdmd] !== '' && r[iSdmd] != null) sdmd[normName(nm)] = String(r[iSdmd]);
+  });
   const cur = {};
   (rankRows || []).slice(1).forEach(r => {
     const nm = (r[1] || '').trim();
@@ -1876,7 +1965,7 @@ function buildCombinedRows(rows, rankRows, svhldTotals) {
         iComb  = ix(['Combined Score', 'Combined Rank']),
         iSP    = ix(['SP']);
   const lbl = i => (i === -1 ? '' : H[i]);
-  const out = [['Name', 'Team', 'Save Only Rank', 'SV+HLD Rank', 'SV+HLD’s',
+  const out = [['Name', 'Team', 'Save Only Rank', 'SV+HLD Rank', 'SV+HLD’s', 'SD-MD',
                 lbl(iUsage) || 'Usage Score', lbl(iP30) || 'Recent Score',
                 lbl(iOv) || 'Overall Score', lbl(iComb) || 'Combined Score', 'SP']];
   rows.slice(1).forEach(r => {
@@ -1885,7 +1974,7 @@ function buildCombinedRows(rows, rankRows, svhldTotals) {
     const key = normName(nm);
     const tot = (svhldTotals && svhldTotals.hasOwnProperty(key)) ? String(svhldTotals[key]) : '';
     const g = i => (i === -1 || r[i] == null) ? '' : r[i];
-    out.push([nm, g(1), cur[key] || '', g(iSVR), tot, g(iUsage), g(iP30), g(iOv), g(iComb), g(iSP)]);
+    out.push([nm, g(1), cur[key] || '', g(iSVR), tot, sdmd[key] || '', g(iUsage), g(iP30), g(iOv), g(iComb), g(iSP)]);
   });
   return out;
 }
@@ -1971,9 +2060,10 @@ async function show(i) {
           const pair = await Promise.all([
             loadSheet('Save Only Ranks'),
             loadSvHldTotals().catch(() => null),
+            loadSheet('Outlook Stats').catch(() => null),
           ]);
           if (i !== active) return;
-          rows = buildCombinedRows(rows, pair[0], pair[1]);
+          rows = buildCombinedRows(rows, pair[0], pair[1], pair[2]);
         } catch (e) { /* columns simply omitted if the extras fail */ }
       }
       html = tab.type === 'depth'      ? renderDepth(rows)
