@@ -1215,7 +1215,9 @@ async function loadGmliLog(fgid) {
     rolling.push({ t, y: win.reduce((a, x) => a + x.v, 0) / win.length });
     each.push({ t, y: g.v });
   });
-  const out = { season, rolling, each, n: games.length,
+  // His 10 most recent outings, numbered 1 (oldest) to 10 (latest).
+  const last10 = games.slice(-10).map((g, i) => ({ t: i + 1, y: g.v, lbl: String(i + 1), d: g.d }));
+  const out = { season, rolling, each, last10, n: games.length,
                 year: games.length ? games[games.length - 1].d.slice(0, 4) : '' };
   gmliCache[fgid] = out;
   return out;
@@ -1231,14 +1233,14 @@ function openGmliModal(name, team, fgid) {
       '" title="Open Pitcher List player page">' + esc(name) + '</span></div>' +
     '<div class="modal-sub" id="gmliSub">' + esc(team || '') + '</div>' +
     '<div class="chart-grid">' +
-    card('chGmliRoll', 'gmLI: last 10 appearances (rolling)') +
+    card('chGmliRoll', 'gmLI: last 10 appearances') +
     card('chGmliSeason', 'gmLI: season average to date') +
     '</div></div></div>');
 
-  const put = (id, title, pts, note) => {
+  const put = (id, title, pts, note, extra) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<h4>' + esc(title) + '</h4>' +
-      lineChart(pts, { fmt: v => v.toFixed(2), zeroBase: true, ref: 1 }) +
+      lineChart(pts, Object.assign({ fmt: v => v.toFixed(2), zeroBase: true, ref: 1 }, extra || {})) +
       '<div class="chart-note">' + esc(note) + '</div>';
   };
   const fail = msg => ['chGmliRoll', 'chGmliSeason'].forEach(id => {
@@ -1252,8 +1254,12 @@ function openGmliModal(name, team, fgid) {
     const sub = document.getElementById('gmliSub');
     if (sub) sub.textContent = (team ? team + '  ·  ' : '') + g.year + ' season  ·  ' + g.n +
       ' appearances  ·  season gmLI ' + g.season[g.season.length - 1].y.toFixed(2);
-    put('chGmliRoll', 'gmLI: last 10 appearances (rolling)', g.rolling,
-        'Average gmLI of his 10 most recent outings at each point · dashed line = 1.00 (average leverage)');
+    const md = d => (+d.slice(5, 7)) + '/' + (+d.slice(8, 10));
+    const l10 = g.last10;
+    put('chGmliRoll', 'gmLI: last 10 appearances', l10,
+        'gmLI of each of his ' + l10.length + ' most recent outings, 1 = oldest (' + md(l10[0].d) +
+        ') to ' + l10.length + ' = latest (' + md(l10[l10.length - 1].d) + ') · dashed line = 1.00 (average leverage)',
+        { showPoints: true });
     put('chGmliSeason', 'gmLI: season average to date', g.season,
         'Running season average through each appearance · FanGraphs game logs');
   }).catch(() => fail('Couldn’t reach FanGraphs right now. Try again in a moment.'));
