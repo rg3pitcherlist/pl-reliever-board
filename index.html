@@ -806,6 +806,10 @@ function renderStatboard(rows, tabIdx) {
     'Past Month Board': ['RA9-WAR', 'Str-ICR', 'speX'],
   };
   const hidden = new Set((HIDE_COLS[TABS[tabIdx] && TABS[tabIdx].sheet] || []).map(s => s.toUpperCase()));
+  hidden.add('FGID');        // FanGraphs id: plumbing for the gmLI graph, never shown
+  const fgCol = header.findIndex(hh => String(hh).trim().toUpperCase() === 'FGID');
+  // Trends tab: clicking a pitcher opens his season gmLI graph.
+  const gmliClick = TABS[tabIdx] && TABS[tabIdx].sheet === 'SV+HLD Trends';
   const cols = [];           // displayed columns: [2..end of header], minus SP + hidden
   for (let i = 2; i < header.length; i++) {
     if (i !== spCol && !hidden.has(String(header[i]).trim().toUpperCase())) cols.push(i);
@@ -851,10 +855,14 @@ function renderStatboard(rows, tabIdx) {
   h += sortableTh('Player', 'player', tabIdx, false);
   for (const i of cols) h += sortableTh(HEADER_ALIAS[header[i]] || header[i], i, tabIdx, true);
   h += '</tr></thead><tbody>';
-  const plLink = !!(TABS[tabIdx] && TABS[tabIdx].plPages);
+  const plLink = !!(TABS[tabIdx] && TABS[tabIdx].plPages) && !gmliClick;
   for (const r of data) {
     const fl = isFlagged(r);
-    h += '<tr class="data-row' + (fl ? ' sp-flagged' : '') + '">' +
+    const gm = gmliClick
+      ? ' clickable" title="Click for his season gmLI graph" data-gmli="1" data-name="' + esc(r[0] || '') +
+        '" data-team="' + esc(r[1] || '') + '" data-fgid="' + esc(fgCol >= 0 ? (r[fgCol] || '') : '') + '"'
+      : '"';
+    h += '<tr class="data-row' + (fl ? ' sp-flagged' : '') + gm + '>' +
          (showRank ? '<td class="num rank-cell">' + rankOf.get(r) + '</td>' : '') +
          playerCell(r[0], r[1], fl, false, plLink);
     for (const i of cols) h += '<td class="num">' + cellHtml(r[i]) + '</td>';
@@ -865,6 +873,7 @@ function renderStatboard(rows, tabIdx) {
   applyBoardLabel(rows, tabIdx);
   const extraNotes = notes.filter(n => !/^Last updated/i.test(n) && !/^Board:/i.test(n));
   if (sheetName === 'SV+HLD Trends') {
+    extraNotes.push('Click any pitcher for his gmLI over the season (FanGraphs game logs)');
     extraNotes.push('Latest save and hold getters: https://x.com/PitcherListSVs');
     extraNotes.push('Also on Bluesky: https://bsky.app/profile/pitcherlistsaves.pitcherlist.com');
   }
@@ -1123,6 +1132,13 @@ function lineChart(pts, opts) {
        '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="rgba(140,165,210,0.18)"/>' +
        '<text x="4" y="' + (padT + 4) + '" ' + axis + '>' + esc(fmt(topVal)) + '</text>' +
        '<text x="4" y="' + (H - padB + 4) + '" ' + axis + '>' + esc(fmt(botVal)) + '</text>';
+  if (opts.ref != null && opts.ref > y0 && opts.ref < y1) {      // reference line (e.g. gmLI 1.00 = average leverage)
+    const ry = Y(opts.ref).toFixed(1);
+    h += '<line x1="' + padL + '" y1="' + ry + '" x2="' + (W - padR) + '" y2="' + ry +
+         '" stroke="rgba(255,194,119,0.55)" stroke-dasharray="4 4"/>' +
+         '<text x="4" y="' + (+ry + 4) + '" fill="rgba(255,194,119,0.85)" font-size="10" font-family="Work Sans, sans-serif">' +
+         esc(fmt(opts.ref)) + '</text>';
+  }
   h += '<polyline fill="none" stroke="#55e8ff" stroke-width="2" stroke-linejoin="round" points="' +
        pts.map(p => X(p.t).toFixed(1) + ',' + Y(p.y).toFixed(1)).join(' ') + '"/>';
   pts.forEach((p, idx) => {
@@ -1171,6 +1187,76 @@ async function loadPlayerStats(rec) {
   const out = { era, whip, kpct, games: splits.length };
   playerStatCache[rec.key] = out;
   return out;
+}
+
+/* ── gmLI graph (Trends tab) ───────────────────────────────
+   Per-appearance gmLI from the pitcher's FanGraphs game log (FanGraphs
+   allows the board to read it directly). FGID comes from a hidden column the
+   script writes on "SV+HLD Trends". Covers the current season from Opening
+   Day to his latest outing, in season and out. */
+const gmliCache = {};
+async function loadGmliLog(fgid) {
+  if (gmliCache[fgid]) return gmliCache[fgid];
+  const j = await fetch('https://www.fangraphs.com/api/players/game-log?playerid=' +
+    encodeURIComponent(fgid) + '&position=P&type=0').then(r => r.json());
+  const games = (j.mlb || [])
+    .map(g => ({ d: String(g.gamedate || '').slice(0, 10) ||
+                    String(g.Date || '').replace(/<[^>]+>/g, '').slice(0, 10),
+                 v: +g.gmLI }))
+    .filter(g => /^\d{4}-\d{2}-\d{2}$/.test(g.d) && !/^2050/.test(g.d) && isFinite(g.v))
+    .sort((a, b) => (a.d < b.d ? -1 : 1));
+  const season = [], rolling = [], each = [];
+  let sum = 0;
+  games.forEach((g, i) => {
+    const t = new Date(g.d + 'T12:00:00').getTime();
+    sum += g.v;
+    season.push({ t, y: sum / (i + 1) });
+    const win = games.slice(Math.max(0, i - 9), i + 1);
+    rolling.push({ t, y: win.reduce((a, x) => a + x.v, 0) / win.length });
+    each.push({ t, y: g.v });
+  });
+  const out = { season, rolling, each, n: games.length,
+                year: games.length ? games[games.length - 1].d.slice(0, 4) : '' };
+  gmliCache[fgid] = out;
+  return out;
+}
+
+function openGmliModal(name, team, fgid) {
+  const card = (id, title) =>
+    '<div class="chart-card" id="' + id + '"><h4>' + esc(title) + '</h4><div class="spinner" style="margin:36px auto"></div></div>';
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="modal-back" id="playerModal"><div class="modal">' +
+    '<span class="modal-close" id="modalClose">✕ Close</span>' +
+    '<div class="modal-title"><span class="pl-name-link" data-plname="' + esc(name) +
+      '" title="Open Pitcher List player page">' + esc(name) + '</span></div>' +
+    '<div class="modal-sub" id="gmliSub">' + esc(team || '') + '</div>' +
+    '<div class="chart-grid">' +
+    card('chGmliRoll', 'gmLI: last 10 appearances (rolling)') +
+    card('chGmliSeason', 'gmLI: season average to date') +
+    '</div></div></div>');
+
+  const put = (id, title, pts, note) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<h4>' + esc(title) + '</h4>' +
+      lineChart(pts, { fmt: v => v.toFixed(2), zeroBase: true, ref: 1 }) +
+      '<div class="chart-note">' + esc(note) + '</div>';
+  };
+  const fail = msg => ['chGmliRoll', 'chGmliSeason'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = el.querySelector('h4').outerHTML + '<div class="chart-note">' + esc(msg) + '</div>';
+  });
+  if (!fgid) { fail('Graph available after the next data refresh (run updateAll).'); return; }
+
+  loadGmliLog(fgid).then(g => {
+    if (!g.n) { fail('No appearances this season yet.'); return; }
+    const sub = document.getElementById('gmliSub');
+    if (sub) sub.textContent = (team ? team + '  ·  ' : '') + g.year + ' season  ·  ' + g.n +
+      ' appearances  ·  season gmLI ' + g.season[g.season.length - 1].y.toFixed(2);
+    put('chGmliRoll', 'gmLI: last 10 appearances (rolling)', g.rolling,
+        'Average gmLI of his 10 most recent outings at each point · dashed line = 1.00 (average leverage)');
+    put('chGmliSeason', 'gmLI: season average to date', g.season,
+        'Running season average through each appearance · FanGraphs game logs');
+  }).catch(() => fail('Couldn’t reach FanGraphs right now. Try again in a moment.'));
 }
 
 function openPlayerModal(tabIdx, key) {
@@ -1892,7 +1978,9 @@ $content.addEventListener('click', e => {
     return;
   }
   const tr = e.target.closest('tr.clickable');
-  if (tr && TABS[active] && TABS[active].type === 'ranktrends') {
+  if (tr && tr.dataset.gmli) {
+    openGmliModal(tr.dataset.name, tr.dataset.team, tr.dataset.fgid);
+  } else if (tr && TABS[active] && TABS[active].type === 'ranktrends') {
     openPlayerModal(active, tr.dataset.key);
   }
 });
