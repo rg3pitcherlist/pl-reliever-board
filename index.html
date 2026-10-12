@@ -416,6 +416,10 @@ table.rt-table th {
 table.rt-table th[data-col="player"] { max-width: none; }
 table.rt-table td { padding-left: 9px; padding-right: 9px; }
 table.rt-table td.player-cell { padding-left: var(--cell-pad-x); }
+/* fitRtHeaders(): a header goes on one line when the table still fits
+   without sideways scrolling; otherwise it wraps and centres over its column. */
+table.rt-table th.rt-one { white-space: nowrap; max-width: none; }
+table.rt-table th.rt-wrap { text-align: center; }
 
 /* ── Injured List tab ──────────────────────────────────── */
 td.wrap { white-space: normal; line-height: 1.5; }
@@ -1700,6 +1704,14 @@ function colFinder(header, limit) {
    dropped — otherwise they'd scatter through the table on the first sort.
    Sortable on every column except the last two (status + notes).
    ─────────────────────────────────────────────────────────── */
+/* Rick's top 20 free agents, in order (Oct 2026). Shown first on the Free
+   Agents tab until a stat header is clicked. */
+const FA_TOP_20 = [
+  'Adrian Morejon', 'David Bednar', 'Ryan Helsley', 'Bryan Abreu', 'Evan Phillips',
+  'Raisel Iglesias', 'Emilio Pagan', 'Kenley Jansen', 'Pete Fairbanks', 'Alex Vesia',
+  'Steven Okert', 'Gregory Soto', 'A.J. Minter', 'A.J. Puk', 'Jonathan Loaisiga',
+  'Kevin Ginkel', 'Andrew Kittredge', 'Jose Alvarado', 'Jason Adam', 'Andres Machado',
+];
 function renderFreeAgents(rows, L, tabIdx) {
   const header = rows[0].map(h => String(h == null ? '' : h).trim());
   const notes  = [];
@@ -1734,6 +1746,13 @@ function renderFreeAgents(rows, L, tabIdx) {
   ]);
 
   const st = sortState[tabIdx];
+  if (!(st && SPEC[st.col] && !SPEC[st.col].fixed)) {
+    // Default order: Rick's top 20 free agents first, in his order; everyone
+    // else follows in sheet order.
+    const rankOf = new Map(FA_TOP_20.map((n, i) => [normName(n), i]));
+    data = data.map((r, i) => [r, rankOf.has(normName(nameOf(r))) ? rankOf.get(normName(nameOf(r))) : 1000 + i])
+               .sort((a, b) => a[1] - b[1]).map(p => p[0]);
+  }
   if (st && SPEC[st.col] && !SPEC[st.col].fixed) {
     const g = SPEC[st.col].get;
     data = data.slice().sort((a, b) => {
@@ -2169,6 +2188,33 @@ function capTables() {
       if (sib && (sib.classList.contains('board-controls') || sib.classList.contains('notes-card') ||
                   sib.classList.contains('ct-legend'))) sib.style.maxWidth = px;
     }
+  });
+  fitRtHeaders();
+}
+function fitRtHeaders() {
+  $content.querySelectorAll('table.rt-table').forEach(tbl => {
+    const sc = tbl.closest('.table-scroll');
+    if (!sc || !tbl.tHead) return;
+    const ths = [...tbl.tHead.rows[0].cells].filter(th => th.getAttribute('data-col') !== 'player');
+    ths.forEach(th => th.classList.remove('rt-one', 'rt-wrap'));
+    const fits = () => sc.scrollWidth <= sc.clientWidth + 1;
+    const headH = () => Math.round(tbl.tHead.getBoundingClientRect().height);
+    const lineWidths = th => {
+      const r = document.createRange(); r.selectNodeContents(th);
+      const m = new Map();
+      [...r.getClientRects()].forEach(x => { const k = Math.round(x.top); m.set(k, (m.get(k) || 0) + x.width); });
+      return [...m.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1]);
+    };
+    // Only headers whose second line is a short orphan ("Δ", "Rk.").
+    const orphans = ths.filter(th => { const w = lineWidths(th); return w.length > 1 && w[w.length - 1] < 0.45 * Math.max(...w); });
+    orphans.forEach(th => {
+      const h0 = headH();
+      th.classList.add('rt-one');
+      // Keep it on one line only if nothing scrolls and no other header gets taller.
+      if (!fits() || headH() > h0 || ths.some(o => o !== th && lineWidths(o).length > 2)) {
+        th.classList.remove('rt-one'); th.classList.add('rt-wrap');
+      }
+    });
   });
 }
 
