@@ -6,7 +6,7 @@
 <title>Rick's Reliever Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   /* Surfaces */
@@ -45,23 +45,36 @@
   --row-bn: rgba(34,40,63,0.3);
 
   /* Semantic */
-  --green: #34d399;
-  --red: #f4707c;
-  --blue: #3da9f5;
-  --violet: #a78bfa;
+  --green: #8fe3a6;  /* good */
+  --red: #ff9a9a;    /* bad */
+  --blue: #7accfa;   /* tag-prospect */
+  --violet: #b69bff; /* tag-steals */
   --gold: #f5b950;
+
+  /* Pitcher List design system (tokens.json) */
+  --font-display: "Instrument Sans", "DM Sans", system-ui, sans-serif;
+  --font-text: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Work Sans", system-ui, sans-serif;
+  --page-bg-start: #171a2b;
+  --page-bg-mid: #21243a;
+  --page-bg-end: #181b2c;
+  --line: rgba(255,255,255,.13);
+  --line-strong: rgba(255,255,255,.2);
+  --ghost-hover: #2b3e69;
+  --thead-1: #404660; --thead-2: #3c4360; --thead-3: #353e5b; --thead-4: #333c59; --thead-5: #313a59;
+  --scrim: rgba(5,6,14,.62);
+  --focus: rgba(255,255,255,.5);
+  --control-h: 40px;
+  --r-control: 8px;
+  --shadow-thead: inset 0 1px 0 rgba(255,255,255,.08);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; }
 body {
   background-color: var(--surface-1);
-  background-image: url("data:image/svg+xml,%3Csvg%20width%3D%222364%22%20height%3D%222589%22%20viewBox%3D%220%200%202364%202589%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22base%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%222364%22%20y2%3D%222589%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23171A2B%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2248%25%22%20stop-color%3D%22%2321243A%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23181B2C%22/%3E%0A%20%20%20%20%3C/linearGradient%3E%0A%0A%20%20%20%20%3CradialGradient%20id%3D%22r1%22%20cx%3D%220%22%20cy%3D%220%22%20r%3D%221%22%20gradientUnits%3D%22userSpaceOnUse%22%0A%20%20%20%20%20%20gradientTransform%3D%22translate%28425.52%20207.12%29%20scale%281702.08%201190.94%29%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23BED7FF%22%20stop-opacity%3D%220.085%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2252%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%3C/radialGradient%3E%0A%0A%20%20%20%20%3CradialGradient%20id%3D%22r2%22%20cx%3D%220%22%20cy%3D%220%22%20r%3D%221%22%20gradientUnits%3D%22userSpaceOnUse%22%0A%20%20%20%20%20%20gradientTransform%3D%22translate%281796.64%20466.02%29%20scale%281371.12%20984.82%29%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2378A5EB%22%20stop-opacity%3D%220.055%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2254%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%3C/radialGradient%3E%0A%0A%20%20%20%20%3CradialGradient%20id%3D%22r3%22%20cx%3D%220%22%20cy%3D%220%22%20r%3D%221%22%20gradientUnits%3D%22userSpaceOnUse%22%0A%20%20%20%20%20%20gradientTransform%3D%22translate%28472.8%202278.32%29%20scale%281654.8%201346.28%29%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2391B9F5%22%20stop-opacity%3D%220.06%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2256%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%3C/radialGradient%3E%0A%0A%20%20%20%20%3CradialGradient%20id%3D%22r4%22%20cx%3D%220%22%20cy%3D%220%22%20r%3D%221%22%20gradientUnits%3D%22userSpaceOnUse%22%0A%20%20%20%20%20%20gradientTransform%3D%22translate%282080.32%202122.98%29%20scale%281087.44%201605.18%29%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23D2E4FF%22%20stop-opacity%3D%220.052%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2255%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%3C/radialGradient%3E%0A%0A%20%20%20%20%3ClinearGradient%20id%3D%22l1%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%222364%22%20y2%3D%222589%22%0A%20%20%20%20%20%20gradientUnits%3D%22userSpaceOnUse%22%20gradientTransform%3D%22rotate%28-17%201182%201294.5%29%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFFFF%22%20stop-opacity%3D%220.045%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2218%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2238%25%22%20stop-color%3D%22%2387AFF0%22%20stop-opacity%3D%220.052%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2261%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23D2E4FF%22%20stop-opacity%3D%220.04%22/%3E%0A%20%20%20%20%3C/linearGradient%3E%0A%0A%20%20%20%20%3ClinearGradient%20id%3D%22l2%22%20x1%3D%220%22%20y1%3D%222589%22%20x2%3D%222364%22%20y2%3D%220%22%0A%20%20%20%20%20%20gradientUnits%3D%22userSpaceOnUse%22%20gradientTransform%3D%22rotate%289%201182%201294.5%29%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2228%25%22%20stop-color%3D%22%236E91D7%22%20stop-opacity%3D%220.045%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2249%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2273%25%22%20stop-color%3D%22%23E6F0FF%22%20stop-opacity%3D%220.032%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-opacity%3D%220%22/%3E%0A%20%20%20%20%3C/linearGradient%3E%0A%20%20%3C/defs%3E%0A%0A%20%20%3Crect%20width%3D%222364%22%20height%3D%222589%22%20fill%3D%22url%28%23base%29%22/%3E%0A%20%20%3Crect%20width%3D%222364%22%20height%3D%222589%22%20fill%3D%22url%28%23l2%29%22/%3E%0A%20%20%3Crect%20width%3D%222364%22%20height%3D%222589%22%20fill%3D%22url%28%23l1%29%22/%3E%0A%20%20%3Crect%20width%3D%222364%22%20height%3D%222589%22%20fill%3D%22url%28%23r4%29%22/%3E%0A%20%20%3Crect%20width%3D%222364%22%20height%3D%222589%22%20fill%3D%22url%28%23r3%29%22/%3E%0A%20%20%3Crect%20width%3D%222364%22%20height%3D%222589%22%20fill%3D%22url%28%23r2%29%22/%3E%0A%20%20%3Crect%20width%3D%222364%22%20height%3D%222589%22%20fill%3D%22url%28%23r1%29%22/%3E%0A%3C/svg%3E%0A");
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
+  background-image: linear-gradient(140deg, var(--page-bg-start) 0%, var(--page-bg-mid) 52%, var(--page-bg-end) 100%);
   background-attachment: fixed;
   color: var(--text-cell);
-  font-family: 'Work Sans', sans-serif;
+  font-family: var(--font-text);
   font-size: 14px;
   line-height: 1.2;
 }
@@ -71,14 +84,14 @@ body {
 
 /* ── Page header ───────────────────────────────────────── */
 .league-header { flex-shrink: 0; padding: 24px 28px 0; }
-.league-title  { font: 700 36px/36px 'DM Sans', sans-serif; color: var(--cyan); margin-bottom: 10px; }
-.league-meta   { font: 400 16px 'DM Sans', sans-serif; color: rgba(192,196,216,0.72); letter-spacing: 0.32px; margin-bottom: 18px; min-height: 19px; }
-.section-title { font: 900 24px/1.2 'DM Sans', sans-serif; color: var(--cyan); margin-bottom: 12px; }
+.league-title  { font: 700 36px/36px var(--font-display); color: var(--cyan); margin-bottom: 10px; }
+.league-meta   { font: 400 16px var(--font-display); color: rgba(192,196,216,0.72); letter-spacing: 0.32px; margin-bottom: 18px; min-height: 19px; }
+.section-title { font: 700 24px/1.2 var(--font-display); color: var(--cyan); margin-bottom: 12px; }
 
 /* ── Tabs ──────────────────────────────────────────────── */
-.tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--border-tab); }
+.tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
 .tab {
-  font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 17px;
+  font-family: var(--font-display); font-weight: 500; font-size: 17px;
   color: var(--text-inactive-tab); letter-spacing: 0.34px;
   padding: 14px 0 16px; margin-right: 40px;
   cursor: pointer; position: relative; user-select: none;
@@ -88,7 +101,7 @@ body {
 .tab.active { font-weight: 700; color: var(--amber); }
 .tab.active::after {
   content: ''; position: absolute; bottom: -1px; left: -5px; right: -5px;
-  height: 6px;
+  height: 3px;
   background: var(--amber);
   border-radius: 999px 999px 0 0;
   box-shadow: 0 0 14px rgba(255,194,119,0.42);
@@ -129,8 +142,8 @@ body {
 }
 table { width: 100%; border-collapse: collapse; }
 th {
-  background: #2E3658;
-  font: 600 12px 'Work Sans', sans-serif; color: var(--cyan-header);
+  background: linear-gradient(180deg, var(--thead-1) 0%, var(--thead-2) 22%, var(--thead-3) 45%, var(--thead-4) 68%, var(--thead-5) 100%);
+  font: 600 14px var(--font-display); color: var(--cyan-header);
   height: 34.5px; padding: 0 var(--cell-pad-x);
   border-bottom: 1px solid var(--border-thead);
   /* solid bottom rule travels with the sticky header as rows pass under it */
@@ -141,18 +154,19 @@ th {
 th.num { text-align: right; }
 th.sortable { cursor: pointer; }
 th .arr { color: var(--amber); }
+th.sorted { color: #fff; }
 tbody tr:nth-child(odd)  { background: var(--row-a); }
 tbody tr:nth-child(even) { background: var(--row-b); }
 tbody tr { border-bottom: 1px solid var(--border-row); }
 tbody tr:last-child { border-bottom: none; }
-td { padding: 10px var(--cell-pad-x); font: 400 14px 'Work Sans', sans-serif; color: var(--text-cell); white-space: nowrap; }
+td { padding: 10px var(--cell-pad-x); font: 400 14px var(--font-text); color: var(--text-cell); white-space: nowrap; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.zero, .zero { color: var(--text-zero); }
 .player-cell { min-width: 168px; }
 /* Leading rank number on the score-ranked boards */
 td.rank-cell {
   width: 54px; padding-right: 6px;
-  font: 600 15px 'Work Sans', sans-serif; color: var(--amber-muted);
+  font: 600 15px var(--font-text); color: var(--amber-muted);
   font-variant-numeric: tabular-nums;
 }
 th.num.sortable[data-col="rank"] { width: 54px; }
@@ -184,11 +198,11 @@ th[data-col="player"] {
               0 1px 0 var(--border-thead), 1px 0 0 var(--border-table);
 }
 .player-name {
-  font: 600 16px/1 'Work Sans', sans-serif; color: var(--text-player);
+  font: 600 16px/1 var(--font-text); color: var(--text-player);
   margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px;
 }
 .player-team {
-  font: 500 14px 'Work Sans', sans-serif; color: var(--text-team);
+  font: 500 14px var(--font-text); color: var(--text-team);
   letter-spacing: 0.115px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 tr.data-row { height: 62px; }
@@ -199,15 +213,15 @@ tr.data-row { height: 62px; }
 .board-controls { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; }
 .sp-toggle {
   display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
-  font: 500 13px 'Work Sans', sans-serif; color: var(--text-nav);
-  background: var(--surface-3); border: 1px solid var(--border-tab);
-  border-radius: 8px; padding: 7px 12px;
+  font: 500 14px var(--font-display); color: #fff;
+  background: transparent; border: 1px solid var(--line);
+  border-radius: var(--r-control); height: var(--control-h); padding: 0 16px;
 }
-.sp-toggle:hover { border-color: rgba(255,194,119,0.4); color: #eef2fb; }
+.sp-toggle:hover { border-color: var(--line-strong); background: var(--ghost-hover); }
 .sp-toggle input { accent-color: var(--amber); width: 15px; height: 15px; cursor: pointer; margin: 0; }
 /* Tags are bold coloured text — no pills/chips anywhere on the board. */
 .sp-badge {
-  margin-left: 8px; font: 800 11px/1 'DM Sans', sans-serif; letter-spacing: 0.06em;
+  margin-left: 8px; font: 800 11px/1 var(--font-display); letter-spacing: 0.06em;
   color: var(--amber);
 }
 tbody tr.sp-flagged { background: rgba(255,194,119,0.085) !important; }
@@ -220,12 +234,12 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .notes-card h5 {
-  font: 700 12px 'DM Sans', sans-serif; letter-spacing: 0.09em; text-transform: uppercase;
+  font: 700 12px var(--font-display); letter-spacing: 0.09em; text-transform: uppercase;
   color: var(--cyan-header); margin-bottom: 8px;
 }
 .notes-card ul { list-style: none; }
 .notes-card li {
-  font: 400 15px/1.55 'Work Sans', sans-serif; color: rgba(226,230,244,0.88);
+  font: 400 15px/1.55 var(--font-text); color: rgba(226,230,244,0.88);
   padding: 4px 0; border-top: 1px solid var(--border-row);
 }
 .notes-card li:first-child { border-top: none; }
@@ -249,22 +263,22 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
   border-radius: 50%; background: rgba(0,0,0,0.45); filter: blur(10px); z-index: -1;
 }
 .bp-team {
-  font: 600 16px/1.25 'Work Sans', sans-serif; color: var(--text-player);
+  font: 600 16px/1.25 var(--font-text); color: var(--text-player);
   margin-bottom: 8px; padding-right: 4px;
 }
 .bp-row { display: flex; align-items: center; gap: 8px; padding: 4.5px 0; }
 .bp-role {
-  font: 800 11px 'DM Sans', sans-serif; letter-spacing: 0.06em;
+  font: 800 11px var(--font-display); letter-spacing: 0.06em;
   min-width: 26px; color: var(--text-nav);
 }
 .bp-role.cl { color: var(--cyan); }
 .bp-role.co { color: var(--blue); }
 .bp-role.su { color: var(--amber); }
-.bp-name { font: 500 14px 'Work Sans', sans-serif; color: var(--text-cell); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-.bp-hand { font: 600 11px 'Work Sans', sans-serif; color: var(--text-zero); }
+.bp-name { font: 500 14px var(--font-text); color: var(--text-cell); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.bp-hand { font: 600 11px var(--font-text); color: var(--text-zero); }
 .bp-hand.lefty { color: var(--gold); }
 .chip {
-  display: block; font: 800 11px 'DM Sans', sans-serif; letter-spacing: 0.07em;
+  display: block; font: 800 11px var(--font-display); letter-spacing: 0.07em;
   margin-bottom: 8px; color: var(--text-nav);
 }
 .chip.stable    { color: var(--green); }
@@ -282,7 +296,7 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .outlook-card { padding: 12px 12px 6px; }
 .outlook-card .bp-team { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
 .outlook-count {
-  font: 500 11px 'DM Sans', sans-serif; color: var(--text-zero); letter-spacing: 0.04em;
+  font: 500 11px var(--font-display); color: var(--text-zero); letter-spacing: 0.04em;
 }
 /* Fixed layout + a shared <colgroup> keeps every team card's columns in the
    same positions. No min-width and no scroll wrapper: each team's table
@@ -293,7 +307,7 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
    accent bar in its primary colour (set inline by teamPill). */
 .team-pill {
   display: inline-block; padding-left: 10px; border-left: 4px solid var(--border-tab);
-  color: var(--text-player); font: 800 17px/1.25 'DM Sans', sans-serif; letter-spacing: 0.01em;
+  color: var(--text-player); font: 800 17px/1.25 var(--font-display); letter-spacing: 0.01em;
 }
 .outlook-table th, .outlook-table td { overflow: hidden; text-overflow: ellipsis; }
 .outlook-table th.num { text-align: right; }
@@ -305,12 +319,12 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
    rule would otherwise win and truncate "2027 CLOSER ODDS". */
 .outlook-card table.outlook-table th { white-space: normal; vertical-align: bottom; }
 .outlook-table th {
-  font: 600 10px 'DM Sans', sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+  font: 600 10px var(--font-display); letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--text-nav); text-align: left; padding: 4px 8px 6px; white-space: nowrap;
   border-bottom: 1px solid var(--border-table);
 }
 .outlook-table td {
-  font: 400 12.5px 'Work Sans', sans-serif; color: var(--text-player);
+  font: 400 12.5px var(--font-text); color: var(--text-player);
   padding: 4px 8px; white-space: nowrap;
 }
 .outlook-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -318,7 +332,7 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 
 /* Contract status: bold text, one colour per status type. */
 .ct-badge {
-  font: 700 13px 'Work Sans', sans-serif; white-space: nowrap; color: var(--text-nav);
+  font: 700 13px var(--font-text); white-space: nowrap; color: var(--text-nav);
 }
 .ct-badge.ct-fa  { color: var(--green); }
 .ct-badge.ct-po  { color: var(--violet); }
@@ -330,7 +344,7 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 .ct-legend {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; margin-top: 14px;
 }
-.ct-none { font: 400 12px 'Work Sans', sans-serif; color: var(--text-zero); }
+.ct-none { font: 400 12px var(--font-text); color: var(--text-zero); }
 
 /* ── Player-page links (RP Leaderboard / Past Month Board) ── */
 .pl-name-link { cursor: pointer; }
@@ -338,7 +352,7 @@ tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,
 
 /* ── IL badge (from the Injured List sheet) ────────────── */
 .il-badge {
-  margin-left: 8px; font: 800 11px/1 'DM Sans', sans-serif; letter-spacing: 0.06em;
+  margin-left: 8px; font: 800 11px/1 var(--font-display); letter-spacing: 0.06em;
   color: var(--red);
 }
 td .delta-il { color: var(--red); font-weight: 600; }
@@ -351,42 +365,42 @@ tr.clickable:hover { background: rgba(85,232,255,0.07) !important; }
 /* ── Player trend modal ────────────────────────────────── */
 .modal-back {
   position: fixed; inset: 0; z-index: 50;
-  background: rgba(7,9,18,0.72); backdrop-filter: blur(3px);
+  background: var(--scrim); backdrop-filter: blur(3px);
   display: flex; align-items: flex-start; justify-content: center;
   padding: 48px 16px; overflow-y: auto;
 }
 .modal {
-  background: var(--surface-2); border: 1px solid var(--border-table);
-  border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  background: var(--surface-3); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
   width: 100%; max-width: 860px; padding: 22px 24px 24px; position: relative;
 }
 .modal-close {
   position: absolute; top: 14px; right: 16px; cursor: pointer;
-  font: 600 15px 'Work Sans', sans-serif; color: var(--text-zero);
-  background: var(--surface-3); border: 1px solid var(--border-tab);
-  border-radius: 8px; padding: 5px 11px; user-select: none;
+  font: 700 14px var(--font-display); color: #fff;
+  background: transparent; border: 1px solid var(--line);
+  border-radius: var(--r-control); height: var(--control-h); padding: 0 16px; user-select: none;
 }
-.modal-close:hover { color: #eef2fb; border-color: rgba(255,194,119,0.4); }
-.modal-title { font: 700 24px 'DM Sans', sans-serif; color: var(--text-player); }
-.modal-sub   { font: 500 14px 'Work Sans', sans-serif; color: var(--text-team); margin: 4px 0 16px; }
+.modal-close:hover { border-color: var(--line-strong); background: var(--ghost-hover); }
+.modal-title { font: 700 24px var(--font-display); color: var(--text-player); }
+.modal-sub   { font: 500 14px var(--font-text); color: var(--text-team); margin: 4px 0 16px; }
 .chart-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .chart-grid { grid-template-columns: 1fr; } }
 .chart-card {
   background: var(--surface-3); border: 1px solid var(--border-table);
   border-radius: 10px; padding: 12px 14px 10px;
 }
-.chart-card h4 { font: 600 13px 'Work Sans', sans-serif; color: var(--cyan-header); margin-bottom: 6px; }
+.chart-card h4 { font: 600 13px var(--font-text); color: var(--cyan-header); margin-bottom: 6px; }
 .chart-card svg { width: 100%; height: auto; display: block; }
-.chart-note { font: 400 11px 'Work Sans', sans-serif; color: var(--text-zero); margin-top: 6px; }
+.chart-note { font: 400 11px var(--font-text); color: var(--text-zero); margin-top: 6px; }
 
 /* ── Reliever Transactions ─────────────────────────────── */
 .tx-wrap { width: 100%; }
-.tx-head { font: 700 22px 'DM Sans', sans-serif; color: var(--text-player); margin-bottom: 4px; }
-.tx-src  { font: 400 13px 'Work Sans', sans-serif; color: var(--text-zero); margin-bottom: 16px; }
+.tx-head { font: 700 22px var(--font-display); color: var(--text-player); margin-bottom: 4px; }
+.tx-src  { font: 400 13px var(--font-text); color: var(--text-zero); margin-bottom: 16px; }
 .tx-src a { color: var(--cyan); text-decoration: none; }
 .tx-list { border: 1px solid var(--border-table); border-radius: 10px; overflow: hidden; }
 .tx-item {
-  padding: 12px 16px; font: 400 15.5px/1.5 'Work Sans', sans-serif; color: var(--text-cell);
+  padding: 12px 16px; font: 400 15.5px/1.5 var(--font-text); color: var(--text-cell);
   border-bottom: 1px solid var(--border-row);
 }
 .tx-item strong { font-weight: 700; color: var(--text-player); }
@@ -406,14 +420,26 @@ table.rt-table td.player-cell { padding-left: var(--cell-pad-x); }
 /* ── Injured List tab ──────────────────────────────────── */
 td.wrap { white-space: normal; line-height: 1.5; }
 
+/* ── Equal stat columns (all-numeric boards) ───────────────
+   equalizeCols() fixes # and Player, then splits the rest evenly, so every
+   stat gets the same room. Headers may wrap at spaces ("RP / Score"); the
+   table only scrolls sideways below its measured minimum width. */
+table.eq-cols th { white-space: normal; line-height: 1.15; vertical-align: bottom; height: auto; padding-top: 8px; padding-bottom: 8px; }
+table.eq-cols th.num { padding-left: 6px; padding-right: 6px; }
+table.eq-cols td.num { padding-left: 8px; padding-right: 8px; }
+table.eq-cols th[data-col="rank"], table.eq-cols td.rank-cell { padding-left: 10px; }
+table.eq-cols th[data-col="player"], table.eq-cols td.player-cell { padding-left: 14px; }
+table.eq-cols .player-name { max-width: 100%; }
+
 /* ── States ────────────────────────────────────────────── */
 .spinner {
   width: 26px; height: 26px; border-radius: 50%;
   border: 3px solid var(--border-tab); border-top-color: var(--cyan);
   animation: spin 0.8s linear infinite; margin: 70px auto;
 }
+*:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.state-msg { color: var(--text-zero); text-align: center; padding: 70px 20px; font: 400 14px 'Work Sans', sans-serif; }
+.state-msg { color: var(--text-zero); text-align: center; padding: 70px 20px; font: 400 14px var(--font-text); }
 
 @media (max-width: 720px) {
   .league-header { padding: 18px 16px 0; }
@@ -918,14 +944,14 @@ function renderStatboard(rows, tabIdx) {
   }
   const isQuick = p => /^(Last updated|Min IP|Window)/i.test(p);
   setMeta(parts.filter(isQuick).join(' | '));
-  h += footNotes(parts.filter(p => !isQuick(p)).concat(extraNotes));
+  h += footNotes(tidyBoardNotes(parts.filter(p => !isQuick(p)).concat(extraNotes)));
   return h;
 }
 
 function sortableTh(label, col, tabIdx, numeric) {
   const st = sortState[tabIdx];
   const arr = st && String(st.col) === String(col) ? (st.dir === 1 ? ' <span class="arr">▴</span>' : ' <span class="arr">▾</span>') : '';
-  return '<th class="sortable' + (numeric ? ' num' : '') + '" data-col="' + col + '">' + esc(label) + arr + '</th>';
+  return '<th class="sortable' + (numeric ? ' num' : '') + (arr ? ' sorted' : '') + '" data-col="' + col + '">' + esc(label) + arr + '</th>';
 }
 
 /* ── Rank Trends (current ranking merged with seasonal trend tab) ──
@@ -1124,7 +1150,7 @@ function lineChart(pts, opts) {
     : H - padB - (H - padT - padB) * ((v - y0) / (y1 - y0));
   const fmt  = opts.fmt || (v => String(Math.round(v * 100) / 100));
   const dFmt = t => { const d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate(); };
-  const axis = 'fill="rgba(164,170,202,0.8)" font-size="10" font-family="Work Sans, sans-serif"';
+  const axis = 'fill="rgba(164,170,202,0.8)" font-size="10" font-family="SF Pro Text, -apple-system, Work Sans, sans-serif"';
 
   let h = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
   const topVal = opts.invert ? y0 : y1, botVal = opts.invert ? y1 : y0;
@@ -1136,7 +1162,7 @@ function lineChart(pts, opts) {
     const ry = Y(opts.ref).toFixed(1);
     h += '<line x1="' + padL + '" y1="' + ry + '" x2="' + (W - padR) + '" y2="' + ry +
          '" stroke="rgba(255,194,119,0.55)" stroke-dasharray="4 4"/>' +
-         '<text x="4" y="' + (+ry + 4) + '" fill="rgba(255,194,119,0.85)" font-size="10" font-family="Work Sans, sans-serif">' +
+         '<text x="4" y="' + (+ry + 4) + '" fill="rgba(255,194,119,0.85)" font-size="10" font-family="SF Pro Text, -apple-system, Work Sans, sans-serif">' +
          esc(fmt(opts.ref)) + '</text>';
   }
   h += '<polyline fill="none" stroke="#55e8ff" stroke-width="2" stroke-linejoin="round" points="' +
@@ -1145,7 +1171,7 @@ function lineChart(pts, opts) {
     const cx = X(p.t).toFixed(1), cy = Y(p.y).toFixed(1);
     if (opts.showPoints) {
       h += '<circle cx="' + cx + '" cy="' + cy + '" r="3.5" fill="#ffc277"/>' +
-           '<text x="' + cx + '" y="' + (Y(p.y) - 8).toFixed(1) + '" text-anchor="middle" fill="#ffc277" font-size="11" font-weight="600" font-family="Work Sans, sans-serif">' + esc(fmt(p.y)) + '</text>';
+           '<text x="' + cx + '" y="' + (Y(p.y) - 8).toFixed(1) + '" text-anchor="middle" fill="#ffc277" font-size="11" font-weight="600" font-family="SF Pro Text, -apple-system, Work Sans, sans-serif">' + esc(fmt(p.y)) + '</text>';
       if (p.lbl) h += '<text x="' + cx + '" y="' + (H - padB + 14) + '" text-anchor="middle" ' + axis + '>' + esc(p.lbl) + '</text>';
     } else if (idx === 0 || idx === pts.length - 1) {
       h += '<text x="' + cx + '" y="' + (H - padB + 14) + '" text-anchor="' + (idx === 0 ? 'start' : 'end') + '" ' + axis + '>' + dFmt(p.t) + '</text>';
@@ -1933,6 +1959,27 @@ function renderDepth(rows) {
   return h;
 }
 
+/* Leaderboard notes come from the sheet's footer rows. Trim the source
+   asides and give pCRA its own definition line, right under PLV. */
+function tidyBoardNotes(list) {
+  let pcra = '';
+  const out = [];
+  for (let n of list) {
+    n = String(n || '').replace(/\s*;\s*RP Score uses the FanGraphs versions/i, '');
+    if (/^pCRA \(/i.test(n.trim())) {
+      pcra = 'pCRA = Pitch Contribution to Run Average (lower = better)' +
+             (/pCRA not loaded/i.test(n) ? ' · not loaded this run' : '');
+      continue;
+    }
+    out.push(n);
+  }
+  if (pcra) {
+    const i = out.findIndex(n => /^PLV\s*=/i.test(String(n).trim()));
+    out.splice(i === -1 ? out.length : i + 1, 0, pcra);
+  }
+  return out;
+}
+
 /* Notes card under a table: one readable line per note. A leading term
    ("RP Score =", "Recent Score ←", "Current Rank:") is bolded. */
 function footNotes(notes, title) {
@@ -2081,11 +2128,36 @@ function buildCombinedRows(rows, rankRows, svhldTotals, outlookStats) {
    columns across the whole page. The Hide-SP toggle and the Notes card
    follow the table's width so everything lines up. Tables with wrapping
    text (Injured List notes) use the full width. */
-const COL_MAX_W = 132, PLAYER_MAX_W = 250, RANK_W = 56;
+const COL_MAX_W = 132, PLAYER_MAX_W = 250, RANK_W = 56, EQ_PLAYER_W = 180;
+function equalizeCols(tbl) {
+  if (!tbl || !tbl.tHead || tbl.classList.contains('rt-table')) return;
+  const ths = [...tbl.tHead.rows[0].cells];
+  const col = th => th.getAttribute('data-col');
+  const fixedCol = th => col(th) === 'rank' || col(th) === 'player';
+  if (!ths.some(th => col(th) === 'player')) return;
+  if (ths.some(th => !fixedCol(th) && !th.classList.contains('num'))) return;   // text columns: leave auto
+  // Headers wrap only at spaces, never at a hyphen ("Zc-Os%" stays whole).
+  ths.forEach(th => th.querySelectorAll('*').length || (th.textContent = th.textContent.replace(/-/g, '\u2011')));
+  tbl.classList.add('eq-cols');
+  tbl.style.tableLayout = ''; tbl.style.minWidth = '';
+  ths.forEach(th => { th.style.width = ''; });
+  tbl.style.width = '1px';                                 // measure each column's minimum
+  const mins = ths.map(th => Math.ceil(th.getBoundingClientRect().width));
+  tbl.style.width = '';
+  let fixedW = 0, statW = 0, n = 0;
+  ths.forEach((th, i) => {
+    if (col(th) === 'player')    { th.style.width = EQ_PLAYER_W + 'px'; fixedW += EQ_PLAYER_W; }
+    else if (col(th) === 'rank') { th.style.width = mins[i] + 'px'; fixedW += mins[i]; }
+    else { statW = Math.max(statW, mins[i]); n++; }
+  });
+  tbl.style.minWidth = (fixedW + statW * n) + 'px';
+  tbl.style.tableLayout = 'fixed';
+}
 function capTables() {
   $content.querySelectorAll('.table-wrap').forEach(wrap => {
     const ths = wrap.querySelectorAll('thead th');
     if (!ths.length || wrap.querySelector('td.wrap')) return;
+    equalizeCols(wrap.querySelector('table'));
     let w = 0;
     ths.forEach(th => {
       const c = th.getAttribute('data-col');
