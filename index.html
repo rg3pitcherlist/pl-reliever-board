@@ -1056,9 +1056,11 @@ function renderRankTrends(tab, tabIdx, built) {
   // No Fall ranking yet for this list (D.fall is null) → hide the Fall Rank
   // column and its two Δ columns until next season's Fall list exists.
   const hasFall = !!D.fall;
+  // "Fall '25 Rank": the Fall list comes out the autumn before the season.
+  const fallLabel = hasFall ? "Fall '" + String(D.fall).slice(-2) + ' Rank' : 'Fall Rank';
   const COLS = [
     ['Current Rank', 'cur'],
-  ].concat(hasFall ? [['Fall Rank', 'fall']] : []).concat([
+  ].concat(hasFall ? [[fallLabel, 'fall']] : []).concat([
     ['Winter Rank', 'win'], ['Spring Rank', 'spr'], ['Summer Rank', 'sum'], [tab.finalHeader, 'fin'],
   ]).concat(hasFall ? [['Fall→Winter Δ', 'dfw']] : []).concat([
     ['Winter→Spring Δ', 'dws'], ['Spring→Summer Δ', 'dss'], ['Summer→Final Δ', 'dsf'],
@@ -1112,7 +1114,7 @@ function renderRankTrends(tab, tabIdx, built) {
   h += '</tbody></table></div></div>';
 
   const dateBits = [];
-  if (D.fall)  dateBits.push('Fall Rank = ' + D.fall);
+  if (D.fall)  dateBits.push("Fall '" + String(D.fall).slice(-2) + ' Rank = ' + D.fall);
   else         dateBits.push('Fall Rank starts next season');
   dateBits.push('Winter Rank = ' + D.winter, 'Spring Rank = ' + D.spring, 'Summer Rank = ' + D.summer);
   dateBits.push(tab.finalHeader + ' = ' + (D.final || 'end of season'));
