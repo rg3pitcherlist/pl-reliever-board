@@ -1988,7 +1988,7 @@ function tidyBoardNotes(list) {
   for (let n of list) {
     n = String(n || '').replace(/\s*;\s*RP Score uses the FanGraphs versions/i, '');
     if (/^pCRA \(/i.test(n.trim())) {
-      pcra = 'pCRA = Pitch Contribution to Run Average (lower = better)' +
+      pcra = 'pCRA = Predictive Classified Run Average (lower = better)' +
              (/pCRA not loaded/i.test(n) ? ' · not loaded this run' : '');
       continue;
     }
