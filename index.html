@@ -6,7 +6,7 @@
 <title>Rick's Reliever Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   /* Surfaces */
@@ -45,15 +45,21 @@
   --row-bn: rgba(34,40,63,0.3);
 
   /* Semantic */
-  --green: #8fe3a6;  /* good */
-  --red: #ff9a9a;    /* bad */
+  --green: #7ddf9a;  /* brand-up */
+  --red: #f08a8a;    /* brand-down */
   --blue: #7accfa;   /* tag-prospect */
   --violet: #b69bff; /* tag-steals */
   --gold: #f5b950;
 
-  /* Pitcher List design system (tokens.json) */
-  --font-display: "Instrument Sans", "DM Sans", system-ui, sans-serif;
-  --font-text: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Work Sans", system-ui, sans-serif;
+  /* PLPD design system (Pitcher List Pro Dashboard) */
+  --row-hover: #293461;
+  --sticky-bg: #21273f;
+  --switch-on: #4d79c2;
+  --switch-off: #101222;
+  --switch-knob-off: #8d96b3;
+  --text-switch-off: #a9b0cc;
+  --font-display: "DM Sans", system-ui, sans-serif;
+  --font-text: "Work Sans", system-ui, sans-serif;
   --page-bg-start: #171a2b;
   --page-bg-mid: #21243a;
   --page-bg-end: #181b2c;
@@ -71,7 +77,10 @@
 html, body { height: 100%; }
 body {
   background-color: var(--surface-1);
-  background-image: linear-gradient(140deg, var(--page-bg-start) 0%, var(--page-bg-mid) 52%, var(--page-bg-end) 100%);
+  background-image: url("data:image/webp;base64,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");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
   background-attachment: fixed;
   color: var(--text-cell);
   font-family: var(--font-text);
@@ -86,22 +95,24 @@ body {
 .league-header { flex-shrink: 0; padding: 24px 28px 0; }
 .league-title  { font: 700 36px/36px var(--font-display); color: var(--cyan); margin-bottom: 10px; }
 .league-meta   { font: 400 16px var(--font-display); color: rgba(192,196,216,0.72); letter-spacing: 0.32px; margin-bottom: 18px; min-height: 19px; }
-.section-title { font: 700 24px/1.2 var(--font-display); color: var(--cyan); margin-bottom: 12px; }
+.section-title { font: 900 24px/1.2 var(--font-display); color: var(--cyan); margin-bottom: 12px; }
 
 /* ── Tabs ──────────────────────────────────────────────── */
-.tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; white-space: nowrap; }
 .tab {
-  font-family: var(--font-display); font-weight: 500; font-size: 17px;
+  font-family: var(--font-display); font-weight: 600; font-size: 17px;
   color: var(--text-inactive-tab); letter-spacing: 0.34px;
   padding: 14px 0 16px; margin-right: 40px;
   cursor: pointer; position: relative; user-select: none;
 }
 .tab:last-child { margin-right: 0; }
-.tab:hover { color: #eef2fb; }
-.tab.active { font-weight: 700; color: var(--amber); }
+.tab:hover { color: var(--amber); text-shadow: 0 0 14px rgba(255,194,119,0.42); }
+.tab.active { color: var(--amber); }
 .tab.active::after {
   content: ''; position: absolute; bottom: -1px; left: -5px; right: -5px;
-  height: 3px;
+  height: 6px;
   background: var(--amber);
   border-radius: 999px 999px 0 0;
   box-shadow: 0 0 14px rgba(255,194,119,0.42);
@@ -116,7 +127,7 @@ body {
    short table doesn't stretch its columns across a wide screen. Cell padding
    scales between 12px and 18px — never tighter, so nothing gets squished. */
 .league-header, .content { max-width: 1600px; margin-left: auto; margin-right: auto; }
-:root { --cell-pad-x: clamp(12px, 1.05vw, 18px); }
+:root { --cell-pad-x: 12px; }
 
 /* ── Tables ────────────────────────────────────────────── */
 .table-wrap {
@@ -143,7 +154,7 @@ body {
 table { width: 100%; border-collapse: collapse; }
 th {
   background: linear-gradient(180deg, var(--thead-1) 0%, var(--thead-2) 22%, var(--thead-3) 45%, var(--thead-4) 68%, var(--thead-5) 100%);
-  font: 600 14px var(--font-display); color: var(--cyan-header);
+  font: 600 14px var(--font-text); color: var(--cyan-header);
   height: 34.5px; padding: 0 var(--cell-pad-x);
   border-bottom: 1px solid var(--border-thead);
   /* solid bottom rule travels with the sticky header as rows pass under it */
@@ -154,12 +165,13 @@ th {
 th.num { text-align: right; }
 th.sortable { cursor: pointer; }
 th .arr { color: var(--amber); }
-th.sorted { color: #fff; }
+th.sorted { color: var(--amber); }
+th.sortable:hover { color: var(--text-cell); }
 tbody tr:nth-child(odd)  { background: var(--row-a); }
 tbody tr:nth-child(even) { background: var(--row-b); }
 tbody tr { border-bottom: 1px solid var(--border-row); }
 tbody tr:last-child { border-bottom: none; }
-td { padding: 10px var(--cell-pad-x); font: 400 14px var(--font-text); color: var(--text-cell); white-space: nowrap; }
+td { padding: 8px var(--cell-pad-x); font: 400 16px var(--font-text); color: var(--text-cell); white-space: nowrap; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.zero, .zero { color: var(--text-zero); }
 .player-cell { min-width: 168px; }
@@ -191,6 +203,8 @@ tbody tr:nth-child(even) td.player-cell { background: #21263e; }
 tbody tr.sp-flagged td.rank-cell,
 tbody tr.sp-flagged td.player-cell { background: #2e2c36 !important; }
 
+tbody tr.data-row:hover td.rank-cell,
+tbody tr.data-row:hover td.player-cell { background: var(--row-hover) !important; }
 /* Divider marking the edge of the frozen pane */
 td.player-cell { box-shadow: 1px 0 0 var(--border-table); }
 th[data-col="player"] {
@@ -198,34 +212,44 @@ th[data-col="player"] {
               0 1px 0 var(--border-thead), 1px 0 0 var(--border-table);
 }
 .player-name {
-  font: 600 16px/1 var(--font-text); color: var(--text-player);
+  font: 500 16px/1.15 var(--font-text); color: var(--text-player);
   margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px;
 }
 .player-team {
   font: 500 14px var(--font-text); color: var(--text-team);
   letter-spacing: 0.115px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-tr.data-row { height: 62px; }
+tr.data-row { height: 51px; }
+tbody tr.data-row:hover { background: var(--row-hover) !important; }
 .up { color: var(--green); }
 .down { color: var(--red); }
 
 /* ── True-SP flag (mirrors the sheet's orange rows) ────── */
 .board-controls { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; }
 .sp-toggle {
-  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
-  font: 500 14px var(--font-display); color: #fff;
-  background: transparent; border: 1px solid var(--line);
-  border-radius: var(--r-control); height: var(--control-h); padding: 0 16px;
+  display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
+  font: 500 14px var(--font-display); color: var(--text-switch-off); min-height: var(--control-h);
 }
-.sp-toggle:hover { border-color: var(--line-strong); background: var(--ghost-hover); }
-.sp-toggle input { accent-color: var(--amber); width: 15px; height: 15px; cursor: pointer; margin: 0; }
+.sp-toggle:has(input:checked) { color: var(--text-cell); }
+/* PLPD switch: 34x20 track, knob slides in 200ms */
+.sp-toggle input {
+  appearance: none; -webkit-appearance: none; margin: 0; cursor: pointer; flex: none;
+  width: 34px; height: 20px; border-radius: 10px; position: relative;
+  background: var(--switch-off); border: 1px solid rgba(255,255,255,0.3); transition: background 200ms;
+}
+.sp-toggle input::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--switch-knob-off); transition: transform 200ms, background 200ms;
+}
+.sp-toggle input:checked { background: var(--switch-on); border-color: var(--switch-on); }
+.sp-toggle input:checked::after { transform: translateX(14px); background: var(--text-cell); }
+@media (prefers-reduced-motion: reduce) { .sp-toggle input, .sp-toggle input::after { transition: none; } }
 /* Tags are bold coloured text — no pills/chips anywhere on the board. */
 .sp-badge {
   margin-left: 8px; font: 800 11px/1 var(--font-display); letter-spacing: 0.06em;
   color: var(--amber);
 }
 tbody tr.sp-flagged { background: rgba(255,194,119,0.085) !important; }
-tbody tr.sp-flagged td:first-child { box-shadow: inset 3px 0 0 rgba(255,194,119,0.75); }
 
 /* ── Notes card under tables ───────────────────────────── */
 .notes-card {
@@ -360,7 +384,7 @@ td .delta-sp { color: var(--amber); font-weight: 600; }
 
 /* ── Clickable trend rows ──────────────────────────────── */
 tr.clickable { cursor: pointer; }
-tr.clickable:hover { background: rgba(85,232,255,0.07) !important; }
+tr.clickable:hover { background: var(--row-hover) !important; }
 
 /* ── Player trend modal ────────────────────────────────── */
 .modal-back {
@@ -445,11 +469,45 @@ table.eq-cols .player-name { max-width: 100%; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .state-msg { color: var(--text-zero); text-align: center; padding: 70px 20px; font: 400 14px var(--font-text); }
 
-@media (max-width: 720px) {
-  .league-header { padding: 18px 16px 0; }
-  .content { padding: 16px 12px 28px; }
-  .league-title { font-size: 28px; line-height: 28px; }
-  .tab { font-size: 15px; margin-right: 22px; padding: 10px 0 12px; }
+/* ── Phone (820px and below), per the PLPD phone tables ──
+   Rank (36px) and Player (124px) stay pinned; stat columns scroll sideways.
+   12px is allowed for phone tables only. */
+@media (max-width: 820px) {
+  .league-header { padding: 16px 16px 0; }
+  .content { padding: 14px 12px 28px; }
+  .league-title { font-size: 26px; line-height: 30px; margin-bottom: 6px; }
+  .league-meta { font-size: 14px; margin-bottom: 10px; }
+  .section-title { font-size: 20px; }
+  .tabs { margin: 0 -16px; padding: 0 16px; }
+  .tab { font-size: 15px; margin-right: 24px; padding: 10px 0 12px; }
+  .tab.active::after { left: -3px; right: -3px; height: 4px; }
+
+  .table-scroll { max-height: calc(100vh - 190px); }
+  th { font-size: 12px; height: 30px; padding: 0 8px; }
+  td { font-size: 12px; padding: 6px 8px; }
+  tr.data-row { height: 40px; }
+  td.rank-cell, th[data-col="rank"] { width: 36px; min-width: 36px; padding-left: 8px; padding-right: 4px; font-size: 12px; }
+  td.player-cell { min-width: 124px; max-width: 124px; width: 124px; }
+  .player-name { font-size: 13px; font-weight: 600; max-width: 116px; margin-bottom: 2px; }
+  .player-team { font-size: 12px; }
+  .sp-badge, .il-badge { margin-left: 4px; font-size: 11px; }
+  table.eq-cols { table-layout: auto !important; min-width: 0 !important; }
+  table.eq-cols th.num, table.eq-cols td.num { padding-left: 6px; padding-right: 8px; }
+  table.rt-table th { padding: 6px 6px; max-width: 64px; }
+  td.wrap { min-width: 220px; }
+
+  .board-controls { justify-content: flex-start; }
+  .notes-card { padding: 12px 14px; }
+  .notes-card li { font-size: 14px; }
+  .bp-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .outlook-card { overflow-x: auto; }
+  .outlook-card .outlook-table { min-width: 1080px; }
+  .modal-back { padding: 16px 8px; }
+  .modal { padding: 18px 14px 16px; }
+  .modal-title { font-size: 20px; padding-right: 80px; }
+}
+@media (max-width: 420px) {
+  .bp-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -954,8 +1012,9 @@ function renderStatboard(rows, tabIdx) {
 
 function sortableTh(label, col, tabIdx, numeric) {
   const st = sortState[tabIdx];
-  const arr = st && String(st.col) === String(col) ? (st.dir === 1 ? ' <span class="arr">▴</span>' : ' <span class="arr">▾</span>') : '';
-  return '<th class="sortable' + (numeric ? ' num' : '') + (arr ? ' sorted' : '') + '" data-col="' + col + '">' + esc(label) + arr + '</th>';
+  // PLPD: the sorted column's label turns amber; no arrows.
+  const arr = st && String(st.col) === String(col) ? ' ' : '';
+  return '<th class="sortable' + (numeric ? ' num' : '') + (arr ? ' sorted' : '') + '" data-col="' + col + '">' + esc(label) + '</th>';
 }
 
 /* ── Rank Trends (current ranking merged with seasonal trend tab) ──
@@ -1156,7 +1215,7 @@ function lineChart(pts, opts) {
     : H - padB - (H - padT - padB) * ((v - y0) / (y1 - y0));
   const fmt  = opts.fmt || (v => String(Math.round(v * 100) / 100));
   const dFmt = t => { const d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate(); };
-  const axis = 'fill="rgba(164,170,202,0.8)" font-size="10" font-family="SF Pro Text, -apple-system, Work Sans, sans-serif"';
+  const axis = 'fill="rgba(164,170,202,0.8)" font-size="10" font-family="Work Sans, sans-serif"';
 
   let h = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
   const topVal = opts.invert ? y0 : y1, botVal = opts.invert ? y1 : y0;
@@ -1168,7 +1227,7 @@ function lineChart(pts, opts) {
     const ry = Y(opts.ref).toFixed(1);
     h += '<line x1="' + padL + '" y1="' + ry + '" x2="' + (W - padR) + '" y2="' + ry +
          '" stroke="rgba(255,194,119,0.55)" stroke-dasharray="4 4"/>' +
-         '<text x="4" y="' + (+ry + 4) + '" fill="rgba(255,194,119,0.85)" font-size="10" font-family="SF Pro Text, -apple-system, Work Sans, sans-serif">' +
+         '<text x="4" y="' + (+ry + 4) + '" fill="rgba(255,194,119,0.85)" font-size="10" font-family="Work Sans, sans-serif">' +
          esc(fmt(opts.ref)) + '</text>';
   }
   h += '<polyline fill="none" stroke="#55e8ff" stroke-width="2" stroke-linejoin="round" points="' +
@@ -1177,7 +1236,7 @@ function lineChart(pts, opts) {
     const cx = X(p.t).toFixed(1), cy = Y(p.y).toFixed(1);
     if (opts.showPoints) {
       h += '<circle cx="' + cx + '" cy="' + cy + '" r="3.5" fill="#ffc277"/>' +
-           '<text x="' + cx + '" y="' + (Y(p.y) - 8).toFixed(1) + '" text-anchor="middle" fill="#ffc277" font-size="11" font-weight="600" font-family="SF Pro Text, -apple-system, Work Sans, sans-serif">' + esc(fmt(p.y)) + '</text>';
+           '<text x="' + cx + '" y="' + (Y(p.y) - 8).toFixed(1) + '" text-anchor="middle" fill="#ffc277" font-size="11" font-weight="600" font-family="Work Sans, sans-serif">' + esc(fmt(p.y)) + '</text>';
       if (p.lbl) h += '<text x="' + cx + '" y="' + (H - padB + 14) + '" text-anchor="middle" ' + axis + '>' + esc(p.lbl) + '</text>';
     } else if (idx === 0 || idx === pts.length - 1) {
       h += '<text x="' + cx + '" y="' + (H - padB + 14) + '" text-anchor="' + (idx === 0 ? 'start' : 'end') + '" ' + axis + '>' + dFmt(p.t) + '</text>';
@@ -2020,6 +2079,8 @@ function renderTabs() {
   $tabs.innerHTML = TABS.map((t, i) =>
     '<div class="tab' + (i === active ? ' active' : '') + '" data-i="' + i + '">' + esc(t.label) + '</div>'
   ).join('');
+  const on = $tabs.querySelector('.tab.active');     // keep the active tab visible on phones
+  if (on && $tabs.scrollWidth > $tabs.clientWidth) on.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 $tabs.addEventListener('click', e => {
   const el = e.target.closest('.tab');
@@ -2152,6 +2213,11 @@ function buildCombinedRows(rows, rankRows, svhldTotals, outlookStats) {
 const COL_MAX_W = 132, PLAYER_MAX_W = 250, RANK_W = 56, EQ_PLAYER_W = 180;
 function equalizeCols(tbl) {
   if (!tbl || !tbl.tHead || tbl.classList.contains('rt-table')) return;
+  if (window.matchMedia('(max-width: 820px)').matches) {   // phones: natural widths, sideways scroll
+    tbl.classList.remove('eq-cols'); tbl.style.tableLayout = ''; tbl.style.minWidth = '';
+    [...tbl.tHead.rows[0].cells].forEach(th => { th.style.width = ''; });
+    return;
+  }
   const ths = [...tbl.tHead.rows[0].cells];
   const col = th => th.getAttribute('data-col');
   const fixedCol = th => col(th) === 'rank' || col(th) === 'player';
