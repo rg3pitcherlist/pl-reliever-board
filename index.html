@@ -6,7 +6,7 @@
 <title>Rick's Reliever Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Work+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   /* Surfaces */
@@ -21,7 +21,9 @@
   --amber-muted: rgba(255,194,119,0.82);
 
   /* Text */
-  --text-nav: #cbd7fd;
+  --text-nav: #ebeae7;      /* paper-100 */
+  --body-text: #ebeae7;     /* paper-100: body copy, descriptions, meta lines */
+  --card-bg: #292c42;
   --text-inactive-tab: rgba(217,221,238,0.86);
   --text-cell: #f0f1f5;
   --text-player: rgba(246,248,255,0.96);
@@ -60,6 +62,8 @@
   --text-switch-off: #a9b0cc;
   --font-display: "DM Sans", system-ui, sans-serif;
   --font-text: "Work Sans", system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Instrument Sans", system-ui, sans-serif;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --page-bg-start: #171a2b;
   --page-bg-mid: #21243a;
   --page-bg-end: #181b2c;
@@ -68,7 +72,7 @@
   --ghost-hover: #2b3e69;
   --thead-1: #404660; --thead-2: #3c4360; --thead-3: #353e5b; --thead-4: #333c59; --thead-5: #313a59;
   --scrim: rgba(5,6,14,.62);
-  --focus: rgba(255,255,255,.5);
+  --focus: var(--cyan);
   --control-h: 40px;
   --r-control: 8px;
   --shadow-thead: inset 0 1px 0 rgba(255,255,255,.08);
@@ -93,9 +97,9 @@ body {
 
 /* ── Page header ───────────────────────────────────────── */
 .league-header { flex-shrink: 0; padding: 24px 28px 0; }
-.league-title  { font: 700 36px/36px var(--font-display); color: var(--cyan); margin-bottom: 10px; }
-.league-meta   { font: 400 16px var(--font-display); color: rgba(192,196,216,0.72); letter-spacing: 0.32px; margin-bottom: 18px; min-height: 19px; }
-.section-title { font: 900 24px/1.2 var(--font-display); color: var(--cyan); margin-bottom: 12px; }
+.league-title  { font: 700 36px/36px var(--font-display); color: var(--cyan); margin-bottom: 10px; text-wrap: balance; }
+.league-meta   { font: 400 16px/1.2 var(--font-body); color: var(--body-text); margin-bottom: 18px; min-height: 19px; text-wrap: pretty; }
+.section-title { font: 900 24px/1.2 var(--font-display); color: var(--cyan-header); margin-bottom: 12px; text-wrap: balance; }
 
 /* ── Tabs ──────────────────────────────────────────────── */
 .tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--line); }
@@ -167,6 +171,10 @@ th.sortable { cursor: pointer; }
 th .arr { color: var(--amber); }
 th.sorted { color: var(--amber); }
 th.sortable:hover { color: var(--text-cell); }
+th.sortable { transition: color .15s var(--ease-out); }
+th.sortable:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+.tab { transition: color .15s var(--ease-out), text-shadow .15s var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { th.sortable, .tab { transition: none; } }
 tbody tr:nth-child(odd)  { background: var(--row-a); }
 tbody tr:nth-child(even) { background: var(--row-b); }
 tbody tr { border-bottom: 1px solid var(--border-row); }
@@ -254,16 +262,16 @@ tbody tr.sp-flagged { background: rgba(255,194,119,0.085) !important; }
 /* ── Notes card under tables ───────────────────────────── */
 .notes-card {
   margin-top: 18px; padding: 16px 20px 14px;
-  background: var(--surface-3); border: 1px solid var(--border-table); border-radius: 12px;
+  background: var(--card-bg); border: 1px solid var(--border-table); border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .notes-card h5 {
-  font: 700 12px var(--font-display); letter-spacing: 0.09em; text-transform: uppercase;
-  color: var(--cyan-header); margin-bottom: 8px;
+  font: 700 16px/1.2 var(--font-display);
+  color: var(--amber); margin-bottom: 8px;
 }
 .notes-card ul { list-style: none; }
 .notes-card li {
-  font: 400 15px/1.55 var(--font-text); color: rgba(226,230,244,0.88);
+  font: 400 16px/1.5 var(--font-body); color: var(--body-text); text-wrap: pretty;
   padding: 4px 0; border-top: 1px solid var(--border-row);
 }
 .notes-card li:first-child { border-top: none; }
@@ -405,8 +413,8 @@ tr.clickable:hover { background: var(--row-hover) !important; }
   border-radius: var(--r-control); height: var(--control-h); padding: 0 16px; user-select: none;
 }
 .modal-close:hover { border-color: var(--line-strong); background: var(--ghost-hover); }
-.modal-title { font: 700 24px var(--font-display); color: var(--text-player); }
-.modal-sub   { font: 500 14px var(--font-text); color: var(--text-team); margin: 4px 0 16px; }
+.modal-title { font: 700 24px var(--font-display); color: var(--amber); text-wrap: balance; }
+.modal-sub   { font: 400 16px/1.5 var(--font-body); color: var(--body-text); margin: 4px 0 16px; text-wrap: pretty; }
 .chart-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .chart-grid { grid-template-columns: 1fr; } }
 .chart-card {
@@ -419,8 +427,8 @@ tr.clickable:hover { background: var(--row-hover) !important; }
 
 /* ── Reliever Transactions ─────────────────────────────── */
 .tx-wrap { width: 100%; }
-.tx-head { font: 700 22px var(--font-display); color: var(--text-player); margin-bottom: 4px; }
-.tx-src  { font: 400 13px var(--font-text); color: var(--text-zero); margin-bottom: 16px; }
+.tx-head { font: 700 22px var(--font-display); color: var(--amber); margin-bottom: 4px; text-wrap: balance; }
+.tx-src  { font: 400 16px/1.5 var(--font-body); color: var(--body-text); margin-bottom: 16px; text-wrap: pretty; }
 .tx-src a { color: var(--cyan); text-decoration: none; }
 .tx-list { border: 1px solid var(--border-table); border-radius: 10px; overflow: hidden; }
 .tx-item {
@@ -467,7 +475,7 @@ table.eq-cols .player-name { max-width: 100%; }
 }
 *:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.state-msg { color: var(--text-zero); text-align: center; padding: 70px 20px; font: 400 14px var(--font-text); }
+.state-msg { color: var(--body-text); text-align: center; padding: 70px 20px; font: 400 16px/1.5 var(--font-body); text-wrap: pretty; }
 
 /* ── Phone (820px and below), per the PLPD phone tables ──
    Rank (36px) and Player (124px) stay pinned; stat columns scroll sideways.
