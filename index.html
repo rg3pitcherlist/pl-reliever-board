@@ -1599,8 +1599,9 @@ function renderILTab(il) {
    Both tabs show the same ten stats, defined once here so they can never
    drift apart. Sources, each joined by player name:
      IP, SD-MD, K-BB%   the tab's own sheet
-     SIERA, WPA/LI,     "Outlook Stats" — FanGraphs, written by the Apps
-       Zc-Os%           Script each offseason (every pitcher, no IP floor)
+     SIERA, WPA/LI      "Outlook Stats" — FanGraphs, written by the Apps
+                        Script each offseason (every pitcher, no IP floor)
+     Z-O+               Rick's "2026 Z-O+" sheet, read live (relief IP only)
      PLV                "PLV Data" — the hand-pasted Pitcher List export
      Stuff+             Pitcher List's Stuff+ sheet, "Season" tab, read live
      SwStr%, CSW%       "PL Stats" — Pitcher List's own numbers; where a
@@ -1608,6 +1609,8 @@ function renderILTab(il) {
    ─────────────────────────────────────────────────────────── */
 const STUFF_DOC = '1RePjV5VZV3I-JcwaYFpEfSkSZKI_Fy0KIjsCSn9HIVY';
 const STUFF_MIN_PITCHES = 50;
+const ZO_DOC = '1WgfWGbhmpdqJTOV1qTXf5G8pdsF_AV1L5gBdCHo-g8g';
+const ZO_SHEET = '2026 Z-O+';
 const PLV_MIN_PITCHES_OFF = 100;   // matches the leaderboards' PLV floor
 
 /* Closer Outlook team headers: full name + club colours (primary fill,
@@ -1666,10 +1669,11 @@ function teamPill(code) {
 /* Notes-card lines shared by both offseason tabs (definitions + sources). */
 function offseasonNotes(variant) {
   return [
-    'Zc-Os% = Z-Contact% − O-Swing% (lower = better)',
+    'Z-O+ = zone contact minus chase damage, scaled so 100 = league-average reliever (higher = better)',
     'PLV = Pitch Level Value (min ' + PLV_MIN_PITCHES_OFF + ' pitches)',
     variant === 'outlook' ? 'SV+HLD = 2026 saves + holds' : '',
-    'SIERA, WPA/LI, Zc-Os%: FanGraphs, full season, no IP minimum',
+    'SIERA, WPA/LI: FanGraphs, full season, no IP minimum',
+    'Z-O+: 2026 relief innings only',
     (variant === 'outlook' ? 'SwStr%' : 'SwStr% and CSW%') +
       ': Pitcher List’s own numbers (FanGraphs for pitchers below PL’s minimum)',
     'Stuff+ = Pitcher List Stuff+ (min ' + STUFF_MIN_PITCHES + ' pitches)',
@@ -1677,13 +1681,14 @@ function offseasonNotes(variant) {
 }
 
 async function loadOffseasonLookups() {
-  const [adv, plv, pl, stuff] = await Promise.all([
+  const [adv, plv, pl, stuff, zo] = await Promise.all([
     loadSheet('Outlook Stats').catch(() => null),
     loadSheet('PLV Data').catch(() => null),
     loadSheet('PL Stats').catch(() => null),
     loadSheet('Season', STUFF_DOC).catch(() => null),
+    loadSheet(ZO_SHEET, ZO_DOC).catch(() => null),
   ]);
-  return offseasonLookups({ adv, plv, pl, stuff });
+  return offseasonLookups({ adv, plv, pl, stuff, zo });
 }
 
 /* Build name → value maps. gviz quietly serves a doc's FIRST sheet when a
@@ -1692,7 +1697,7 @@ async function loadOffseasonLookups() {
 function offseasonLookups(src) {
   const hdr = rows => ((rows || [])[0] || []).map(x => String(x == null ? '' : x).trim().toUpperCase());
   const key = r => normName(String(r[0] == null ? '' : r[0]).trim());
-  const L = { adv: new Map(), plv: new Map(), stuff: new Map(), pl: new Map() };
+  const L = { adv: new Map(), plv: new Map(), stuff: new Map(), pl: new Map(), zo: new Map() };
 
   let h = hdr(src.adv);
   if (h[0] === 'NAME' && h[1] === 'SIERA') {
@@ -1722,6 +1727,11 @@ function offseasonLookups(src) {
       L.stuff.set(k, r[i]);
     });
   }
+  h = hdr(src.zo);
+  if (h[0] === 'NAME' && h.indexOf('Z-O+') > 0) {
+    const i = h.indexOf('Z-O+');
+    src.zo.slice(1).forEach(r => { const k = key(r); if (k && String(r[i] == null ? '' : r[i]).trim() !== '') L.zo.set(k, r[i]); });
+  }
   h = hdr(src.pl);
   // Exact layout (Name | SwStr% | CSW%). A looser "has a SwStr% column" test
   // would accept the RP Leaderboard that gviz serves when "PL Stats" is missing.
@@ -1749,7 +1759,7 @@ function offseasonStatSpec(L, sc, nameOf, variant) {
     { label: 'WPA/LI', get: r => fix2(A(r).wpali) },
     { label: 'PLV',    get: r => fix2(L.plv.get(normName(nameOf(r)))) },
     { label: 'Stuff+', get: r => int0(L.stuff.get(normName(nameOf(r)))) },
-    { label: 'Zc-Os%', get: r => txt(A(r).zcos) },
+    { label: 'Z-O+',   get: r => int0(L.zo.get(normName(nameOf(r)))) },
     { label: 'SwStr%', get: r => { const p = P(r); return p && real(p.sw)  ? txt(p.sw)  : raw(r, sc.sw); } },
     { label: 'CSW%',   get: r => { const p = P(r); return p && real(p.csw) ? txt(p.csw) : txt(A(r).csw); } },
     { label: 'K-BB%',  get: r => raw(r, sc.kbb) },
@@ -1920,7 +1930,7 @@ function renderCloserOutlook(rows, L) {
   // IP is narrow (values like "64.1") so the stat block starts further left,
   // leaving the contract column more room.
   const STAT_W = { 'IP': 4.6, 'SIERA': 4.9, 'SV+HLD': 5.5, 'SD-MD': 4.8, 'WPA/LI': 5.6, 'PLV': 4.8,
-                   'Stuff+': 5.3, 'Zc-Os%': 5.9, 'SwStr%': 5.9, 'CSW%': 5.5, 'K-BB%': 5.6 };
+                   'Stuff+': 5.3, 'Z-O+': 5.9, 'SwStr%': 5.9, 'CSW%': 5.5, 'K-BB%': 5.6 };
   // Column widths (% of the card), shared by every card so columns line up.
   // The tables don't scroll — they fit the card — so on narrow screens long
   // text ellipsizes (full value on hover) instead of the table sliding.
