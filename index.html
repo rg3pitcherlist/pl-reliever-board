@@ -1669,7 +1669,7 @@ function teamPill(code) {
 /* Notes-card lines shared by both offseason tabs (definitions + sources). */
 function offseasonNotes(variant) {
   return [
-    'Z-O+ = zone contact minus chase damage, scaled so 100 = league-average reliever (higher = better)',
+    'Z-O+ = zone contact minus chase damage, scaled so 100 = league-average reliever (higher = better); regressed with 300 league-average pitches',
     'PLV = Pitch Level Value (min ' + PLV_MIN_PITCHES_OFF + ' pitches)',
     variant === 'outlook' ? 'SV+HLD = 2026 saves + holds' : '',
     'SIERA, WPA/LI: FanGraphs, full season, no IP minimum',
@@ -1728,8 +1728,10 @@ function offseasonLookups(src) {
     });
   }
   h = hdr(src.zo);
-  if (h[0] === 'NAME' && h.indexOf('Z-O+') > 0) {
-    const i = h.indexOf('Z-O+');
+  // Regressed (padded) Z-O+ when the sheet has it; plain Z-O+ otherwise.
+  const iZr = h.indexOf('Z-O+ (REGRESSED)'), iZp = h.indexOf('Z-O+');
+  if (h[0] === 'NAME' && (iZr > 0 || iZp > 0)) {
+    const i = iZr > 0 ? iZr : iZp;
     src.zo.slice(1).forEach(r => { const k = key(r); if (k && String(r[i] == null ? '' : r[i]).trim() !== '') L.zo.set(k, r[i]); });
   }
   h = hdr(src.pl);
